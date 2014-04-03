@@ -1,9 +1,9 @@
 /*************************************************************
  * SugarPak - Domain Specific Language -  Syntactical Sugar  *
  *************************************************************/
- 
+ module.exports = function(DateJS) {
 (function () {
-	var $D = Date, $P = $D.prototype, $N = Number.prototype;
+	var $D = DateJS, $P = $D.prototype, $N = Number.prototype;
 
 	// private
 	$P._orient = +1;
@@ -27,14 +27,14 @@
 	 * Moves the date to the next instance of a date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.today().next().friday();
-	Date.today().next().fri();
-	Date.today().next().march();
-	Date.today().next().mar();
-	Date.today().next().week();
+	DateJS.today().next().friday();
+	DateJS.today().next().fri();
+	DateJS.today().next().march();
+	DateJS.today().next().mar();
+	DateJS.today().next().week();
 	</code></pre>
 	 * 
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$P.next = function () {
 		this._move = true;
@@ -43,17 +43,17 @@
 	};
 
 	/** 
-	 * Creates a new Date (Date.today()) and moves the date to the next instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
+	 * Creates a new DateJS (DateJS.today()) and moves the date to the next instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.next().friday();
-	Date.next().fri();
-	Date.next().march();
-	Date.next().mar();
-	Date.next().week();
+	DateJS.next().friday();
+	DateJS.next().fri();
+	DateJS.next().march();
+	DateJS.next().mar();
+	DateJS.next().week();
 	</code></pre>
 	 * 
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$D.next = function () {
 		return $D.today().next();
@@ -63,14 +63,14 @@
 	 * Moves the date to the previous instance of a date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.today().last().friday();
-	Date.today().last().fri();
-	Date.today().last().march();
-	Date.today().last().mar();
-	Date.today().last().week();
+	DateJS.today().last().friday();
+	DateJS.today().last().fri();
+	DateJS.today().last().march();
+	DateJS.today().last().mar();
+	DateJS.today().last().week();
 	</code></pre>
 	 *  
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$P.last = $P.prev = $P.previous = function () {
 		this._move = true;
@@ -79,17 +79,17 @@
 	};
 
 	/** 
-	 * Creates a new Date (Date.today()) and moves the date to the previous instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
+	 * Creates a new DateJS (DateJS.today()) and moves the date to the previous instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.last().friday();
-	Date.last().fri();
-	Date.previous().march();
-	Date.prev().mar();
-	Date.last().week();
+	DateJS.last().friday();
+	DateJS.last().fri();
+	DateJS.previous().march();
+	DateJS.prev().mar();
+	DateJS.last().week();
 	</code></pre>
 	 *  
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$D.last = $D.prev = $D.previous = function () {
 		return $D.today().last();
@@ -99,10 +99,10 @@
 	 * Performs a equality check when followed by either a month name, day name or .weekday() function.
 	 * Example
 	<pre><code>
-	Date.today().is().friday(); // true|false
-	Date.today().is().fri();
-	Date.today().is().march();
-	Date.today().is().mar();
+	DateJS.today().is().friday(); // true|false
+	DateJS.today().is().fri();
+	DateJS.today().is().march();
+	DateJS.today().is().mar();
 	</code></pre>
 	 *  
 	 * @return {Boolean}    true|false
@@ -116,14 +116,14 @@
 	 * Determines if two date objects occur on/in exactly the same instance of the subsequent date part function.
 	 * The function .same() must be followed by a date part function (example: .day(), .month(), .year(), etc).
 	 *
-	 * An optional Date can be passed in the date part function. If now date is passed as a parameter, 'Now' is used. 
+	 * An optional DateJS can be passed in the date part function. If now date is passed as a parameter, 'Now' is used. 
 	 *
 	 * The following example demonstrates how to determine if two dates fall on the exact same day.
 	 *
 	 * Example
 	<pre><code>
-	var d1 = Date.today(); // today at 00:00
-	var d2 = new Date();   // exactly now.
+	var d1 = DateJS.today(); // today at 00:00
+	var d2 = new DateJS();   // exactly now.
 
 	// Do they occur on the same day?
 	d1.same().day(d2); // true
@@ -132,7 +132,7 @@
 	d1.same().hour(d2); // false, unless d2 hour is '00' (midnight).
 	
 	// What if it's the same day, but one year apart?
-	var nextYear = Date.today().add(1).year();
+	var nextYear = DateJS.today().add(1).year();
 
 	d1.same().day(nextYear); // false, because the dates must occur on the exact same day. 
 	</code></pre>
@@ -141,7 +141,7 @@
 	 *
 	 * Example
 	<pre><code>
-	var future = Date.today().add(2).months();
+	var future = DateJS.today().add(2).months();
 	return someDate.same().week(future); // true|false;
 	</code></pre>
 	 *  
@@ -243,7 +243,7 @@
 	$N.fromNow = $N.after = function (date) {
 		var c = {};
 		c[this._dateElement] = this;
-		return ((!date) ? new Date() : date.clone()).add(c);
+		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
 	/** 
@@ -265,7 +265,7 @@
 		var c = {},
 		s = (this._dateElement[this._dateElement.length-1] !== "s") ? this._dateElement + "s" : this._dateElement;
 		c[s] = this * -1;
-		return ((!date) ? new Date() : date.clone()).add(c);
+		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
 	// Do NOT modify the following string tokens. These tokens are used to build dynamic functions.
@@ -315,11 +315,11 @@
 	Date.fromObject(o2);
 	</code></pre>
 	 *  
-	 * @return {Date}    An object literal representing the original date object.
+	 * @return {DateJS}    An object literal representing the original date object.
 	 */
 	$D.fromObject = function(config) {
 		config.week = null;
-		return Date.today().set(config);
+		return DateJS.today().set(config);
 	};
 		
 	// Create day name functions and abbreviated day name functions (eg. monday(), friday(), fri()).
@@ -338,11 +338,11 @@
 				// 
 				// Example
 				//
-				//   Date.today().add(1).second();
-				//   Date.march().second().monday();
+				//   DateJS.today().add(1).second();
+				//   DateJS.march().second().monday();
 				// 
 				// Things get crazy with the following...
-				//   Date.march().add(1).second().second().monday(); // but it works!!
+				//   DateJS.march().add(1).second().second().monday(); // but it works!!
 				//  
 				if (this._isSecond) {
 					this.addSeconds(this._orient * -1);
@@ -366,7 +366,7 @@
 	var sdf = function (n) {
 		return function () {
 			var t = $D.today(), shift = n - t.getDay();
-			if (n === 0 && Date.CultureInfo.firstDayOfWeek === 1 && t.getDay() !== 0) {
+			if (n === 0 && DateJS.CultureInfo.firstDayOfWeek === 1 && t.getDay() !== 0) {
 				shift = shift + 7;
 			}
 			return t.addDays(shift);
@@ -407,7 +407,7 @@
 	processTerms(dx, sdf, df);
 	processTerms(mx, month_static_functions, month_instance_functions);
 	
-	// Create date element functions and plural date element functions used with Date (eg. day(), days(), months()).
+	// Create date element functions and plural date element functions used with DateJS (eg. day(), days(), months()).
 	var ef = function (j) {
 		return function () {
 			// if the .second() function was called earlier, the _orient 
@@ -420,7 +420,7 @@
 			if (this._same) {
 				this._same = this._is = false;
 				var o1 = this.toObject(),
-					o2 = (arguments[0] || new Date()).toObject(),
+					o2 = (arguments[0] || new DateJS()).toObject(),
 					v = "",
 					k = j.toLowerCase();
 
@@ -458,7 +458,7 @@
 	for (var k = 0; k < px.length; k++) {
 		de = px[k].toLowerCase();
 		if(de !== "weekday") {
-			// Create date element functions and plural date element functions used with Date (eg. day(), days(), months()).
+			// Create date element functions and plural date element functions used with DateJS (eg. day(), days(), months()).
 			$P[de] = $P[de + "s"] = ef(px[k]);
 			
 			// Create date element functions and plural date element functions used with Number (eg. day(), days(), months()).
@@ -491,3 +491,4 @@
 		$P[nth[l]] = (l === 0) ? nthfn(-1) : nthfn(l);
 	}
 }());
+}

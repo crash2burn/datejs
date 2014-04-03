@@ -1,11 +1,12 @@
+module.exports = function(DateJS) {
 (function () {
 	"use strict";
-	Date.Parsing = {
+	DateJS.Parsing = {
 		Exception: function (s) {
 			this.message = "Parse error at '" + s.substring(0, 10) + " ...'";
 		}
 	};
-	var $P = Date.Parsing;
+	var $P = DateJS.Parsing;
 	var dayOffsets = {
 		standard: [0,31,59,90,120,151,181,212,243,273,304,334],
 		leap: [0,31,60,91,121,152,182,213,244,274,305,335]
@@ -17,7 +18,7 @@
 
 	$P.processTimeObject = function (obj) {
 		var d, jan4, date, offset, dayOffset;
-		d = new Date();
+		d = new DateJS();
 		dayOffset = ($P.isLeapYear(obj.year)) ? dayOffsets.leap : dayOffsets.standard;
 		obj.hours = obj.hours ? obj.hours : 0;
 		obj.minutes = obj.minutes ? obj.minutes : 0;
@@ -30,7 +31,7 @@
 			// work out the day of the year...
 			if (!obj.dayOfYear) {
 				obj.weekDay = (!obj.weekDay && obj.weekDay !== 0) ? 1 : obj.weekDay;
-				d = new Date(obj.year, 0, 4);
+				d = new DateJS(obj.year, 0, 4);
 				jan4 = d.getDay() === 0 ? 7 : d.getDay(); // JS is 0 indexed on Sunday.
 				offset = jan4+3;
 				obj.dayOfYear = ((obj.week * 7) + (obj.weekDay === 0 ? 7 : obj.weekDay))-offset;
@@ -48,7 +49,7 @@
 			obj.day = obj.day ? obj.day : 1;
 			obj.dayOfYear = dayOffset[obj.month] + obj.day;
 		}
-		date = new Date(obj.year, obj.month, obj.day, obj.hours, obj.minutes, obj.seconds, obj.milliseconds);
+		date = new DateJS(obj.year, obj.month, obj.day, obj.hours, obj.minutes, obj.seconds, obj.milliseconds);
 
 		if (obj.zone) {
 			// adjust (and calculate) for timezone here
@@ -110,7 +111,7 @@
 		parse: function (s) {
 			var data, i,
 				time = {},
-				order = Date.CultureInfo.dateElementOrder.split("");
+				order = DateJS.CultureInfo.dateElementOrder.split("");
 			if (!(this.isNumeric(s)) || // if it's non-numeric OR
 				(s[0] === "+" && s[0] === "-")) {			// It's an arithmatic string (eg +/-1000)
 				return null;
@@ -141,8 +142,8 @@
 	};
 	$P.Normalizer = {
 		parse: function (s) {
-			var $R = Date.CultureInfo.regexPatterns;
-			var __ = Date.i18n.__;
+			var $R = DateJS.CultureInfo.regexPatterns;
+			var __ = DateJS.i18n.__;
 
 			s = s.replace($R.jan.source, "January")
 				.replace($R.feb, "February")
@@ -156,24 +157,24 @@
 				.replace($R.oct, "October")
 				.replace($R.nov, "November")
 				.replace($R.dec, "December")
-				.replace($R.tomorrow, Date.today().addDays(1).toString("d"))
-				.replace($R.yesterday, Date.today().addDays(-1).toString("d"))
+				.replace($R.tomorrow, DateJS.today().addDays(1).toString("d"))
+				.replace($R.yesterday, DateJS.today().addDays(-1).toString("d"))
 				.replace(/\bat\b/gi, "")
 				.replace(/\s{2,}/, " ");
 
 			var regexStr = "(\\b\\d\\d?("+__("AM")+"|"+__("PM")+")? )("+$R.tomorrow.source.slice(1)+")";
 			s = s.replace(new RegExp(regexStr, "i"), function(full, m1) {
-				var t = Date.today().addDays(1).toString("d");
+				var t = DateJS.today().addDays(1).toString("d");
 				return (t + " " + m1);
 			});
 
-			s = s.replace(new RegExp("(("+$R.past.source+")\\s("+$R.mon.source+"))"), Date.today().last().monday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.tue.source+"))"), Date.today().last().tuesday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.wed.source+"))"), Date.today().last().wednesday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.thu.source+"))"), Date.today().last().thursday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.fri.source+"))"), Date.today().last().friday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sat.source+"))"), Date.today().last().saturday().toString("d"))
-				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sun.source+"))"), Date.today().last().sunday().toString("d"))
+			s = s.replace(new RegExp("(("+$R.past.source+")\\s("+$R.mon.source+"))"), DateJS.today().last().monday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.tue.source+"))"), DateJS.today().last().tuesday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.wed.source+"))"), DateJS.today().last().wednesday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.thu.source+"))"), DateJS.today().last().thursday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.fri.source+"))"), DateJS.today().last().friday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sat.source+"))"), DateJS.today().last().saturday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sun.source+"))"), DateJS.today().last().sunday().toString("d"))
 				.replace($R.amThisMorning, function(str, am){return am;})
 				.replace($R.inTheMorning, "am")
 				.replace($R.thisMorning, "9am")
@@ -188,7 +189,7 @@
 						if (n[2].length >= 4) {
 							// ok, so we're dealing with x/year. But that's not a full date.
 							// This fixes wonky dateElementOrder parsing when set to dmy order.
-							if (Date.CultureInfo.dateElementOrder[0] === "d") {
+							if (DateJS.CultureInfo.dateElementOrder[0] === "d") {
 								s = "1/" + n[0] + "/" + n[2]; // set to 1st of month and normalize the seperator
 							}
 						}
@@ -202,3 +203,4 @@
 		}
 	};
 }());
+}

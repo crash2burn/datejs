@@ -1,12 +1,13 @@
+module.exports = function(DateJS) {
 (function () {
-	var $D = Date;
-	var lang = Date.CultureStrings ? Date.CultureStrings.lang : null;
+	var $D = DateJS;
+	var lang = DateJS.CultureStrings ? DateJS.CultureStrings.lang : null;
 	var loggedKeys = {}; // for debug purposes.
 	var getText = {
 		getFromKey: function (key, countryCode) {
 			var output;
-			if (Date.CultureStrings && Date.CultureStrings[countryCode] && Date.CultureStrings[countryCode][key]) {
-				output = Date.CultureStrings[countryCode][key];
+			if (DateJS.CultureStrings && DateJS.CultureStrings[countryCode] && DateJS.CultureStrings[countryCode][key]) {
+				output = DateJS.CultureStrings[countryCode][key];
 			} else {
 				output = getText.buildFromDefault(key);
 			}
@@ -77,8 +78,8 @@
 		},
 		buildFromRegex: function (key, countryCode) {
 			var output;
-			if (Date.CultureStrings && Date.CultureStrings[countryCode] && Date.CultureStrings[countryCode][key]) {
-				output = new RegExp(Date.CultureStrings[countryCode][key], "i");
+			if (DateJS.CultureStrings && DateJS.CultureStrings[countryCode] && DateJS.CultureStrings[countryCode][key]) {
+				output = new RegExp(DateJS.CultureStrings[countryCode][key], "i");
 			} else {
 				output = new RegExp(key.replace(new RegExp("/", "g"),""), "i");
 			}
@@ -102,7 +103,7 @@
 	
 	var loadI18nScript = function (code) {
 		// paatterned after jQuery's getScript.
-		var url = Date.Config.i18n + code + ".js";
+		var url = DateJS.Config.i18n + code + ".js";
 		var head = document.getElementsByTagName("head")[0] || document.documentElement;
 		var script = document.createElement("script");
 		script.src = url;
@@ -246,7 +247,7 @@
 				rfc1123: "ddd, dd MMM yyyy HH:mm:ss",
 				monthDay: "MMMM dd",
 				yearMonth: "MMMM, yyyy"
-			}, Date.i18n.currentLanguage());
+			}, DateJS.i18n.currentLanguage());
 		},
 		regex: function () {
 			return getText.getFromObjectValues({
@@ -296,7 +297,7 @@
 				timezone: "/^((e(s|d)t|c(s|d)t|m(s|d)t|p(s|d)t)|((gmt)?\\s*(\\+|\\-)\\s*\\d\\d\\d\\d?)|gmt|utc)/",
 				ordinalSuffix: "/^\\s*(st|nd|rd|th)/",
 				timeContext: "/^\\s*(\\:|a(?!u|p)|p)/"
-			}, Date.i18n.currentLanguage());
+			}, DateJS.i18n.currentLanguage());
 		}
 	};
 
@@ -338,32 +339,32 @@
 			return lang || "en-US";
 		},
 		setLanguage: function (code, force) {
-			if (force || code === "en-US" || (!!Date.CultureStrings && !!Date.CultureStrings[code])) {
+			if (force || code === "en-US" || (!!DateJS.CultureStrings && !!DateJS.CultureStrings[code])) {
 				lang = code;
-				Date.CultureStrings.lang = code;
-				Date.CultureInfo = new CultureInfo();
+				DateJS.CultureStrings.lang = code;
+				DateJS.CultureInfo = new CultureInfo();
 			} else {
-				if (!(!!Date.CultureStrings && !!Date.CultureStrings[code])) {
+				if (!(!!DateJS.CultureStrings && !!DateJS.CultureStrings[code])) {
 					if (typeof exports !== "undefined" && this.exports !== exports) {
 						// we're in a Node enviroment, load it using require
 						try {
 							require("../i18n/" + code + ".js");
 							lang = code;
-							Date.CultureStrings.lang = code;
-							Date.CultureInfo = new CultureInfo();
+							DateJS.CultureStrings.lang = code;
+							DateJS.CultureInfo = new CultureInfo();
 						} catch (e) {
 							// var str = "The language for '" + code + "' could not be loaded by Node. It likely does not exist.";
 							throw new Error("The DateJS IETF language tag '" + code + "' could not be loaded by Node. It likely does not exist.");
 						}
-					} else if (Date.Config && Date.Config.i18n) {
+					} else if (DateJS.Config && DateJS.Config.i18n) {
 						// we know the location of the files, so lets load them
 						loadI18nScript(code).done(function(){
 							lang = code;
-							Date.CultureStrings.lang = code;
-							Date.CultureInfo = new CultureInfo();
+							DateJS.CultureStrings.lang = code;
+							DateJS.CultureInfo = new CultureInfo();
 						});
 					} else {
-						Date.console.error("The DateJS IETF language tag '" + code + "' is not available and has not been loaded.");
+						DateJS.console.error("The DateJS IETF language tag '" + code + "' is not available and has not been loaded.");
 				
 					}
 				}
@@ -373,8 +374,9 @@
 			return loggedKeys;
 		},
 		updateCultureInfo: function () {
-			Date.CultureInfo = new CultureInfo();
+			DateJS.CultureInfo = new CultureInfo();
 		}
 	};
 	$D.i18n.updateCultureInfo(); // run automatically
 }());
+}

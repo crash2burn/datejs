@@ -1,3 +1,4 @@
+module.exports = function(DateJS) {
 /* 
  * TimeSpan(milliseconds);
  * TimeSpan(days, hours, minutes, seconds);
@@ -64,12 +65,12 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 	};
 	
 	this.compareTo = function (time) {
-		var t1 = new Date(1970, 1, 1, this.getHours(), this.getMinutes(), this.getSeconds()), t2;
+		var t1 = new DateJS(1970, 1, 1, this.getHours(), this.getMinutes(), this.getSeconds()), t2;
 		if (time === null) {
-			t2 = new Date(1970, 1, 1, 0, 0, 0);
+			t2 = new DateJS(1970, 1, 1, 0, 0, 0);
 		}
 		else {
-			t2 = new Date(1970, 1, 1, time.getHours(), time.getMinutes(), time.getSeconds());
+			t2 = new DateJS(1970, 1, 1, time.getHours(), time.getMinutes(), time.getSeconds());
 		}
 		return (t1 < t2) ? -1 : (t1 > t2) ? 1 : 0;
 	};
@@ -111,7 +112,7 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 	};
 
 	this.getDesignator = function () {
-		return (this.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+		return (this.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 	};
 
 	this.toString = function (format) {
@@ -153,9 +154,9 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 			case "ss":
 				return me.p(me.getSeconds());
 			case "t":
-				return ((me.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator).substring(0, 1);
+				return ((me.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator).substring(0, 1);
 			case "tt":
-				return (me.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+				return (me.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 			}
 		}
 		) : this._toString();
@@ -167,12 +168,12 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
  * Gets the time of day for this date instances. 
  * @return {TimeSpan} TimeSpan
  */
-Date.prototype.getTimeOfDay = function () {
+DateJS.prototype.getTimeOfDay = function () {
 	return new TimeSpan(0, this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 };
 
 /* 
- * TimePeriod(startDate, endDate);
+ * TimePeriod(startDateJS, endDateJS);
  * TimePeriod(years, months, days, hours, minutes, seconds, milliseconds);
  */
 var TimePeriod = function (years, months, days, hours, minutes, seconds, milliseconds) {
@@ -206,7 +207,7 @@ var TimePeriod = function (years, months, days, hours, minutes, seconds, millise
 		this.setMinutes(minutes);
 		this.setSeconds(seconds);
 		this.setMilliseconds(milliseconds);
-	} else if (arguments.length === 2 && arguments[0] instanceof Date && arguments[1] instanceof Date) {
+	} else if (arguments.length === 2 && arguments[0] instanceof DateJS && arguments[1] instanceof DateJS) {
 		// startDate and endDate as arguments
 	
 		var d1 = years.clone();
@@ -260,3 +261,4 @@ var TimePeriod = function (years, months, days, hours, minutes, seconds, millise
 	}
 	return this;
 };
+}

@@ -1,6 +1,6 @@
 /** 
  * @overview datejs
- * @version 1.0.0-beta-2014-03-25
+ * @version 1.0.0-beta-2014-04-03
  * @author Gregory Wild-Smith <gregory@wild-smith.com>
  * @copyright 2014 Gregory Wild-Smith
  * @license MIT
@@ -187,21 +187,57 @@ Date.CultureStrings.lang = "cy-GB";
 
 /** 
  * @overview datejs
- * @version 1.0.0-beta-2014-03-25
+ * @version 1.0.0-beta-2014-04-03
  * @author Gregory Wild-Smith <gregory@wild-smith.com>
  * @copyright 2014 Gregory Wild-Smith
  * @license MIT
  * @homepage https://github.com/abritinthebay/datejs
  */(function () {
-	var $D = Date;
-	var lang = Date.CultureStrings ? Date.CultureStrings.lang : null;
+	var $D = DateJS;
+	var lang = DateJS.CultureStrings ? DateJS.CultureStrings.lang : null;
 	var loggedKeys = {}; // for debug purposes.
-	var __ = function (key, language) {
-		var output, split, length, last;
-		var countryCode = (language) ? language : lang;
-		if (Date.CultureStrings && Date.CultureStrings[countryCode] && Date.CultureStrings[countryCode][key]) {
-			output = Date.CultureStrings[countryCode][key];
-		} else {
+	var getText = {
+		getFromKey: function (key, countryCode) {
+			var output;
+			if (DateJS.CultureStrings && DateJS.CultureStrings[countryCode] && DateJS.CultureStrings[countryCode][key]) {
+				output = DateJS.CultureStrings[countryCode][key];
+			} else {
+				output = getText.buildFromDefault(key);
+			}
+			if (key.charAt(0) === "/") { // Assume it's a regex
+				output = getText.buildFromRegex(key, countryCode);
+			}
+			return output;
+		},
+		getFromObjectValues: function (obj, countryCode) {
+			var key, output = {};
+			for(key in obj) {
+				if (obj.hasOwnProperty(key)) {
+					output[key] = getText.getFromKey(obj[key], countryCode);
+				}
+			}
+			return output;
+		},
+		getFromObjectKeys: function (obj, countryCode) {
+			var key, output = {};
+			for(key in obj) {
+				if (obj.hasOwnProperty(key)) {
+					output[getText.getFromKey(key, countryCode)] = obj[key];
+				}
+			}
+			return output;
+		},
+		getFromArray: function (arr, countryCode) {
+			var i =0, output = [];
+			for (i; i < arr.length; i++){
+				if (i in arr) {
+					output[i] = getText.getFromKey(arr[i], countryCode);
+				}
+			}
+			return output;
+		},
+		buildFromDefault: function (key) {
+			var output, length, split, last;
 			switch(key) {
 				case "name":
 					output = "en-US";
@@ -229,22 +265,38 @@ Date.CultureStrings.lang = "cy-GB";
 							output = split[0];
 						}
 					}
+					break;
 			}
-		}
-		if (key.charAt(0) === "/") {
-			// Assume it's a regex
-			if (Date.CultureStrings && Date.CultureStrings[countryCode] && Date.CultureStrings[countryCode][key]) {
-				output = new RegExp(Date.CultureStrings[countryCode][key], "i");
+			return output;
+		},
+		buildFromRegex: function (key, countryCode) {
+			var output;
+			if (DateJS.CultureStrings && DateJS.CultureStrings[countryCode] && DateJS.CultureStrings[countryCode][key]) {
+				output = new RegExp(DateJS.CultureStrings[countryCode][key], "i");
 			} else {
 				output = new RegExp(key.replace(new RegExp("/", "g"),""), "i");
 			}
+			return output;
 		}
-		loggedKeys[key] = key;
-		return output;
 	};
+
+	var __ = function (key, language) {
+		var countryCode = (language) ? language : lang;
+		loggedKeys[key] = key;
+		if (typeof key === "object") {
+			if (key instanceof Array) {
+				return getText.getFromArray(key, countryCode);
+			} else {
+				return getText.getFromObjectKeys(key, countryCode);
+			}
+		} else {
+			return getText.getFromKey(key, countryCode);
+		}
+	};
+	
 	var loadI18nScript = function (code) {
 		// paatterned after jQuery's getScript.
-		var url = Date.Config.i18n + code + '.js';
+		var url = DateJS.Config.i18n + code + ".js";
 		var head = document.getElementsByTagName("head")[0] || document.documentElement;
 		var script = document.createElement("script");
 		script.src = url;
@@ -255,8 +307,7 @@ Date.CultureStrings.lang = "cy-GB";
 		};
 		// Attach handlers for all browsers
 		script.onload = script.onreadystatechange = function() {
-		if ( !completed && (!this.readyState || this.readyState === "loaded" || this.readyState === "complete") ) {
-				done = true;
+			if ( !completed && (!this.readyState || this.readyState === "loaded" || this.readyState === "complete") ) {
 				events.done();
 				head.removeChild(script);
 			}
@@ -267,18 +318,85 @@ Date.CultureStrings.lang = "cy-GB";
 		}, 0); // allows return to execute first
 		
 		return {
-			done: function (f) {
+			done: function (cb) {
 				events.done = function() {
-					if (f) {
-						f();
+					if (cb) {
+						cb();
 					}
 				};
 			}
 		};
 	};
 
-	var CultureInfo = function () {
-		var buildTimeZones = function (data) {
+	var buildInfo = {
+		timeZoneDST: function () {
+			var DST = {
+				"CHADT": "+1345",
+				"NZDT": "+1300",
+				"AEDT": "+1100",
+				"ACDT": "+1030",
+				"AZST": "+0500",
+				"IRDT": "+0430",
+				"EEST": "+0300",
+				"CEST": "+0200",
+				"BST": "+0100",
+				"PMDT": "-0200",
+				"ADT": "-0300",
+				"NDT": "-0230",
+				"EDT": "-0400",
+				"CDT": "-0500",
+				"MDT": "-0600",
+				"PDT": "-0700",
+				"AKDT": "-0800",
+				"HADT": "-0900"
+			};
+			return __(DST);
+		},
+		timeZoneStandard: function () {
+			var standard = {
+				"LINT": "+1400",
+				"TOT": "+1300",
+				"CHAST": "+1245",
+				"NZST": "+1200",
+				"NFT": "+1130",
+				"SBT": "+1100",
+				"AEST": "+1000",
+				"ACST": "+0930",
+				"JST": "+0900",
+				"CWST": "+0845",
+				"CT": "+0800",
+				"ICT": "+0700",
+				"MMT": "+0630",
+				"BST": "+0600",
+				"NPT": "+0545",
+				"IST": "+0530",
+				"PKT": "+0500",
+				"AFT": "+0430",
+				"MSK": "+0400",
+				"IRST": "+0330",
+				"FET": "+0300",
+				"EET": "+0200",
+				"CET": "+0100",
+				"GMT": "+0000",
+				"UTC": "+0000",
+				"CVT": "-0100",
+				"GST": "-0200",
+				"BRT": "-0300",
+				"NST": "-0330",
+				"AST": "-0400",
+				"EST": "-0500",
+				"CST": "-0600",
+				"MST": "-0700",
+				"PST": "-0800",
+				"AKST": "-0900",
+				"MIT": "-0930",
+				"HST": "-1000",
+				"SST": "-1100",
+				"BIT": "-1200"
+			};
+			return __(standard);
+		},
+		timeZones: function (data) {
 			var zone;
 			for (zone in data.abbreviatedTimeZoneStandard) {
 				if (data.abbreviatedTimeZoneStandard.hasOwnProperty(zone)) {
@@ -291,210 +409,117 @@ Date.CultureStrings.lang = "cy-GB";
 				}
 			}
 			return data.timezones;
-		};
+		},
+		days: function () {
+			return __(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]);
+		},
+		dayAbbr: function () {
+			return __(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+		},
+		dayShortNames: function () {
+			return __(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]);
+		},
+		dayFirstLetters: function () {
+			return __(["S_Sun_Initial", "M_Mon_Initial", "T_Tues_Initial", "W_Wed_Initial", "T_Thu_Initial", "F_Fri_Initial", "S_Sat_Initial"]);
+		},
+		months: function () {
+			return __(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]);
+		},
+		monthAbbr: function () {
+			return __(["Jan_Abbr", "Feb_Abbr", "Mar_Abbr", "Apr_Abbr", "May_Abbr", "Jun_Abbr", "Jul_Abbr", "Aug_Abbr", "Sep_Abbr", "Oct_Abbr", "Nov_Abbr", "Dec_Abbr"]);
+		},
+		formatPatterns: function () {
+			return getText.getFromObjectValues({
+				shortDate: "M/d/yyyy",
+				longDate: "dddd, MMMM dd, yyyy",
+				shortTime: "h:mm tt",
+				longTime: "h:mm:ss tt",
+				fullDateTime: "dddd, MMMM dd, yyyy h:mm:ss tt",
+				sortableDateTime: "yyyy-MM-ddTHH:mm:ss",
+				universalSortableDateTime: "yyyy-MM-dd HH:mm:ssZ",
+				rfc1123: "ddd, dd MMM yyyy HH:mm:ss",
+				monthDay: "MMMM dd",
+				yearMonth: "MMMM, yyyy"
+			}, DateJS.i18n.currentLanguage());
+		},
+		regex: function () {
+			return getText.getFromObjectValues({
+				inTheMorning: "/( in the )(morn(ing)?)\\b/",
+				thisMorning: "/(this )(morn(ing)?)\\b/",
+				amThisMorning: "/(\b\\d(am)? )(this )(morn(ing)?)/",
+				inTheEvening: "/( in the )(even(ing)?)\\b/",
+				thisEvening: "/(this )(even(ing)?)\\b/",
+				pmThisEvening: "/(\b\\d(pm)? )(this )(even(ing)?)/",
+				jan: "/jan(uary)?/",
+				feb: "/feb(ruary)?/",
+				mar: "/mar(ch)?/",
+				apr: "/apr(il)?/",
+				may: "/may/",
+				jun: "/jun(e)?/",
+				jul: "/jul(y)?/",
+				aug: "/aug(ust)?/",
+				sep: "/sep(t(ember)?)?/",
+				oct: "/oct(ober)?/",
+				nov: "/nov(ember)?/",
+				dec: "/dec(ember)?/",
+				sun: "/^su(n(day)?)?/",
+				mon: "/^mo(n(day)?)?/",
+				tue: "/^tu(e(s(day)?)?)?/",
+				wed: "/^we(d(nesday)?)?/",
+				thu: "/^th(u(r(s(day)?)?)?)?/",
+				fri: "/fr(i(day)?)?/",
+				sat: "/^sa(t(urday)?)?/",
+				future: "/^next/",
+				past: "/last|past|prev(ious)?/",
+				add: "/^(\\+|aft(er)?|from|hence)/",
+				subtract: "/^(\\-|bef(ore)?|ago)/",
+				yesterday: "/^yes(terday)?/",
+				today: "/^t(od(ay)?)?/",
+				tomorrow: "/^tom(orrow)?/",
+				now: "/^n(ow)?/",
+				millisecond: "/^ms|milli(second)?s?/",
+				second: "/^sec(ond)?s?/",
+				minute: "/^mn|min(ute)?s?/",
+				hour: "/^h(our)?s?/",
+				week: "/^w(eek)?s?/",
+				month: "/^m(onth)?s?/",
+				day: "/^d(ay)?s?/",
+				year: "/^y(ear)?s?/",
+				shortMeridian: "/^(a|p)/",
+				longMeridian: "/^(a\\.?m?\\.?|p\\.?m?\\.?)/",
+				timezone: "/^((e(s|d)t|c(s|d)t|m(s|d)t|p(s|d)t)|((gmt)?\\s*(\\+|\\-)\\s*\\d\\d\\d\\d?)|gmt|utc)/",
+				ordinalSuffix: "/^\\s*(st|nd|rd|th)/",
+				timeContext: "/^\\s*(\\:|a(?!u|p)|p)/"
+			}, DateJS.i18n.currentLanguage());
+		}
+	};
+
+	var CultureInfo = function () {
 		var info =  {
 			name: __("name"),
 			englishName: __("englishName"),
 			nativeName: __("nativeName"),
-			/* Day Name Strings */
-			dayNames: [
-				__("Sunday"),
-				__("Monday"),
-				__("Tuesday"),
-				__("Wednesday"),
-				__("Thursday"),
-				__("Friday"),
-				__("Saturday")
-			],
-			abbreviatedDayNames: [
-				__("Sun"),
-				__("Mon"),
-				__("Tue"),
-				__("Wed"),
-				__("Thu"),
-				__("Fri"),
-				__("Sat")
-			],
-			shortestDayNames: [
-				__("Su"),
-				__("Mo"),
-				__("Tu"),
-				__("We"),
-				__("Th"),
-				__("Fr"),
-				__("Sa")
-			],
-			firstLetterDayNames: [
-				__("S_Sun_Initial"),
-				__("M_Mon_Initial"),
-				__("T_Tues_Initial"),
-				__("W_Wed_Initial"),
-				__("T_Thu_Initial"),
-				__("F_Fri_Initial"),
-				__("S_Sat_Initial")
-			],
-
-			/* Month Name Strings */
-			monthNames: [
-				__("January"),
-				__("February"),
-				__("March"),
-				__("April"),
-				__("May"),
-				__("June"),
-				__("July"),
-				__("August"),
-				__("September"),
-				__("October"),
-				__("November"),
-				__("December")
-			],
-			abbreviatedMonthNames: [
-				__("Jan_Abbr"),
-				__("Feb_Abbr"),
-				__("Mar_Abbr"),
-				__("Apr_Abbr"),
-				__("May_Abbr"),
-				__("Jun_Abbr"),
-				__("Jul_Abbr"),
-				__("Aug_Abbr"),
-				__("Sep_Abbr"),
-				__("Oct_Abbr"),
-				__("Nov_Abbr"),
-				__("Dec_Abbr")
-			],
-			/* AM/PM Designators */
+			timezones: [],
+			abbreviatedTimeZoneDST: {},
+			abbreviatedTimeZoneStandard: {},
+			dayNames: buildInfo.days(),
+			abbreviatedDayNames: buildInfo.dayAbbr(),
+			shortestDayNames: buildInfo.dayShortNames(),
+			firstLetterDayNames: buildInfo.dayFirstLetters(),
+			monthNames: buildInfo.months(),
+			abbreviatedMonthNames: buildInfo.monthAbbr(),
 			amDesignator: __("AM"),
 			pmDesignator: __("PM"),
 			firstDayOfWeek: __("firstDayOfWeek"),
 			twoDigitYearMax: __("twoDigitYearMax"),
 			dateElementOrder: __("mdy"),
-			/* Standard date and time format patterns */
-			formatPatterns: {
-				shortDate: __("M/d/yyyy"),
-				longDate: __("dddd, MMMM dd, yyyy"),
-				shortTime: __("h:mm tt"),
-				longTime: __("h:mm:ss tt"),
-				fullDateTime: __("dddd, MMMM dd, yyyy h:mm:ss tt"),
-				sortableDateTime: __("yyyy-MM-ddTHH:mm:ss"),
-				universalSortableDateTime: __("yyyy-MM-dd HH:mm:ssZ"),
-				rfc1123: __("ddd, dd MMM yyyy HH:mm:ss"),
-				monthDay: __("MMMM dd"),
-				yearMonth: __("MMMM, yyyy")
-			},
-			regexPatterns: {
-				inTheMorning: __("/( in the )(morn(ing)?)\\b/"),
-				thisMorning: __("/(this )(morn(ing)?)\\b/"),
-				amThisMorning: __("/(\b\\d(am)? )(this )(morn(ing)?)/"),
-				inTheEvening: __("/( in the )(even(ing)?)\\b/"),
-				thisEvening: __("/(this )(even(ing)?)\\b/"),
-				pmThisEvening: __("/(\b\\d(pm)? )(this )(even(ing)?)/"),
-				jan: __("/jan(uary)?/"),
-				feb: __("/feb(ruary)?/"),
-				mar: __("/mar(ch)?/"),
-				apr: __("/apr(il)?/"),
-				may: __("/may/"),
-				jun: __("/jun(e)?/"),
-				jul: __("/jul(y)?/"),
-				aug: __("/aug(ust)?/"),
-				sep: __("/sep(t(ember)?)?/"),
-				oct: __("/oct(ober)?/"),
-				nov: __("/nov(ember)?/"),
-				dec: __("/dec(ember)?/"),
-				sun: __("/^su(n(day)?)?/"),
-				mon: __("/^mo(n(day)?)?/"),
-				tue: __("/^tu(e(s(day)?)?)?/"),
-				wed: __("/^we(d(nesday)?)?/"),
-				thu: __("/^th(u(r(s(day)?)?)?)?/"),
-				fri: __("/fr(i(day)?)?/"),
-				sat: __("/^sa(t(urday)?)?/"),
-				future: __("/^next/"),
-				past: __("/last|past|prev(ious)?/"),
-				add: __("/^(\\+|aft(er)?|from|hence)/"),
-				subtract: __("/^(\\-|bef(ore)?|ago)/"),
-				yesterday: __("/^yes(terday)?/"),
-				today: __("/^t(od(ay)?)?/"),
-				tomorrow: __("/^tom(orrow)?/"),
-				now: __("/^n(ow)?/"),
-				millisecond: __("/^ms|milli(second)?s?/"),
-				second: __("/^sec(ond)?s?/"),
-				minute: __("/^mn|min(ute)?s?/"),
-				hour: __("/^h(our)?s?/"),
-				week: __("/^w(eek)?s?/"),
-				month: __("/^m(onth)?s?/"),
-				day: __("/^d(ay)?s?/"),
-				year: __("/^y(ear)?s?/"),
-				shortMeridian: __("/^(a|p)/"),
-				longMeridian: __("/^(a\\.?m?\\.?|p\\.?m?\\.?)/"),
-				timezone: __("/^((e(s|d)t|c(s|d)t|m(s|d)t|p(s|d)t)|((gmt)?\\s*(\\+|\\-)\\s*\\d\\d\\d\\d?)|gmt|utc)/"),
-				ordinalSuffix: __("/^\\s*(st|nd|rd|th)/"),
-				timeContext: __("/^\\s*(\\:|a(?!u|p)|p)/")
-			},
-			timezones: [],
-			abbreviatedTimeZoneDST: {},
-			abbreviatedTimeZoneStandard: {}
+			formatPatterns: buildInfo.formatPatterns(),
+			regexPatterns: buildInfo.regex()
 		};
-		
-		info.abbreviatedTimeZoneDST[__("CHADT")] = "+1345";
-		info.abbreviatedTimeZoneDST[__("NZDT")] = "+1300";
-		info.abbreviatedTimeZoneDST[__("AEDT")] = "+1100";
-		info.abbreviatedTimeZoneDST[__("ACDT")] = "+1030";
-		info.abbreviatedTimeZoneDST[__("AZST")] = "+0500";
-		info.abbreviatedTimeZoneDST[__("IRDT")] = "+0430";
-		info.abbreviatedTimeZoneDST[__("EEST")] = "+0300";
-		info.abbreviatedTimeZoneDST[__("CEST")] = "+0200";
-		info.abbreviatedTimeZoneDST[__("BST")] = "+0100";
-		info.abbreviatedTimeZoneDST[__("PMDT")] = "-0200";
-		info.abbreviatedTimeZoneDST[__("ADT")] = "-0300";
-		info.abbreviatedTimeZoneDST[__("NDT")] = "-0230";
-		info.abbreviatedTimeZoneDST[__("EDT")] = "-0400";
-		info.abbreviatedTimeZoneDST[__("CDT")] = "-0500";
-		info.abbreviatedTimeZoneDST[__("MDT")] = "-0600";
-		info.abbreviatedTimeZoneDST[__("PDT")] = "-0700";
-		info.abbreviatedTimeZoneDST[__("AKDT")] = "-0800";
-		info.abbreviatedTimeZoneDST[__("HADT")] = "-0900";
 
-		info.abbreviatedTimeZoneStandard[__("LINT")] = "+1400";
-		info.abbreviatedTimeZoneStandard[__("TOT")] = "+1300";
-		info.abbreviatedTimeZoneStandard[__("CHAST")] = "+1245";
-		info.abbreviatedTimeZoneStandard[__("NZST")] = "+1200";
-		info.abbreviatedTimeZoneStandard[__("NFT")] = "+1130";
-		info.abbreviatedTimeZoneStandard[__("SBT")] = "+1100";
-		info.abbreviatedTimeZoneStandard[__("AEST")] = "+1000";
-		info.abbreviatedTimeZoneStandard[__("ACST")] = "+0930";
-		info.abbreviatedTimeZoneStandard[__("JST")] = "+0900";
-		info.abbreviatedTimeZoneStandard[__("CWST")] = "+0845";
-		info.abbreviatedTimeZoneStandard[__("CT")] = "+0800";
-		info.abbreviatedTimeZoneStandard[__("ICT")] = "+0700";
-		info.abbreviatedTimeZoneStandard[__("MMT")] = "+0630";
-		info.abbreviatedTimeZoneStandard[__("BST")] = "+0600";
-		info.abbreviatedTimeZoneStandard[__("NPT")] = "+0545";
-		info.abbreviatedTimeZoneStandard[__("IST")] = "+0530";
-		info.abbreviatedTimeZoneStandard[__("PKT")] = "+0500";
-		info.abbreviatedTimeZoneStandard[__("AFT")] = "+0430";
-		info.abbreviatedTimeZoneStandard[__("MSK")] = "+0400";
-		info.abbreviatedTimeZoneStandard[__("IRST")] = "+0330";
-		info.abbreviatedTimeZoneStandard[__("FET")] = "+0300";
-		info.abbreviatedTimeZoneStandard[__("EET")] = "+0200";
-		info.abbreviatedTimeZoneStandard[__("CET")] = "+0100";
-		info.abbreviatedTimeZoneStandard[__("GMT")] = "+0000";
-		info.abbreviatedTimeZoneStandard[__("UTC")] = "+0000";
-		info.abbreviatedTimeZoneStandard[__("CVT")] = "-0100";
-		info.abbreviatedTimeZoneStandard[__("GST")] = "-0200";
-		info.abbreviatedTimeZoneStandard[__("BRT")] = "-0300";
-		info.abbreviatedTimeZoneStandard[__("NST")] = "-0330";
-		info.abbreviatedTimeZoneStandard[__("AST")] = "-0400";
-		info.abbreviatedTimeZoneStandard[__("EST")] = "-0500";
-		info.abbreviatedTimeZoneStandard[__("CST")] = "-0600";
-		info.abbreviatedTimeZoneStandard[__("MST")] = "-0700";
-		info.abbreviatedTimeZoneStandard[__("PST")] = "-0800";
-		info.abbreviatedTimeZoneStandard[__("AKST")] = "-0900";
-		info.abbreviatedTimeZoneStandard[__("MIT")] = "-0930";
-		info.abbreviatedTimeZoneStandard[__("HST")] = "-1000";
-		info.abbreviatedTimeZoneStandard[__("SST")] = "-1100";
-		info.abbreviatedTimeZoneStandard[__("BIT")] = "-1200";
-
-		buildTimeZones(info);
+		info.abbreviatedTimeZoneDST = buildInfo.timeZoneDST();
+		info.abbreviatedTimeZoneStandard = buildInfo.timeZoneStandard();
+		buildInfo.timeZones(info);
 
 		return info;
 	};
@@ -507,32 +532,32 @@ Date.CultureStrings.lang = "cy-GB";
 			return lang || "en-US";
 		},
 		setLanguage: function (code, force) {
-			if (force || code === "en-US" || (!!Date.CultureStrings && !!Date.CultureStrings[code])) {
+			if (force || code === "en-US" || (!!DateJS.CultureStrings && !!DateJS.CultureStrings[code])) {
 				lang = code;
-				Date.CultureStrings.lang = code;
-				Date.CultureInfo = CultureInfo();
+				DateJS.CultureStrings.lang = code;
+				DateJS.CultureInfo = new CultureInfo();
 			} else {
-				if (!(!!Date.CultureStrings && !!Date.CultureStrings[code])) {
-					if (typeof exports !== 'undefined' && this.exports !== exports) {
+				if (!(!!DateJS.CultureStrings && !!DateJS.CultureStrings[code])) {
+					if (typeof exports !== "undefined" && this.exports !== exports) {
 						// we're in a Node enviroment, load it using require
 						try {
 							require("../i18n/" + code + ".js");
 							lang = code;
-							Date.CultureStrings.lang = code;
-							Date.CultureInfo = CultureInfo();
+							DateJS.CultureStrings.lang = code;
+							DateJS.CultureInfo = new CultureInfo();
 						} catch (e) {
 							// var str = "The language for '" + code + "' could not be loaded by Node. It likely does not exist.";
 							throw new Error("The DateJS IETF language tag '" + code + "' could not be loaded by Node. It likely does not exist.");
 						}
-					} else if (Date.Config && Date.Config.i18n) {
+					} else if (DateJS.Config && DateJS.Config.i18n) {
 						// we know the location of the files, so lets load them
 						loadI18nScript(code).done(function(){
 							lang = code;
-							Date.CultureStrings.lang = code;
-							Date.CultureInfo = CultureInfo();
+							DateJS.CultureStrings.lang = code;
+							DateJS.CultureInfo = new CultureInfo();
 						});
 					} else {
-						Date.console.error("The DateJS IETF language tag '" + code + "' is not available and has not been loaded.");
+						DateJS.console.error("The DateJS IETF language tag '" + code + "' is not available and has not been loaded.");
 				
 					}
 				}
@@ -542,13 +567,13 @@ Date.CultureStrings.lang = "cy-GB";
 			return loggedKeys;
 		},
 		updateCultureInfo: function () {
-			Date.CultureInfo = CultureInfo();
+			DateJS.CultureInfo = new CultureInfo();
 		}
 	};
 	$D.i18n.updateCultureInfo(); // run automatically
 }());
 (function () {
-	var $D = Date,
+	var $D = DateJS,
 		$P = $D.prototype,
 		p = function (s, l) {
 			if (!l) {
@@ -582,7 +607,7 @@ Date.CultureStrings.lang = "cy-GB";
 		 */
 		if (!$D.now) {
 			$D._now = function now() {
-				return new Date().getTime();
+				return new DateJS().getTime();
 			};
 		} else if (!$D._now) {
 			$D._now = $D.now;
@@ -623,10 +648,10 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Date}    this
 	 */
 	$P.clearTime = function () {
-		this.setHours(0);
-		this.setMinutes(0);
-		this.setSeconds(0);
-		this.setMilliseconds(0);
+		this._date.setHours(0);
+		this._date.setMinutes(0);
+		this._date.setSeconds(0);
+		this._date.setMilliseconds(0);
 		return this;
 	};
 
@@ -636,10 +661,10 @@ Date.CultureStrings.lang = "cy-GB";
 	 */
 	$P.setTimeToNow = function () {
 		var n = new Date();
-		this.setHours(n.getHours());
-		this.setMinutes(n.getMinutes());
-		this.setSeconds(n.getSeconds());
-		this.setMilliseconds(n.getMilliseconds());
+		this._date.setHours(n.getHours());
+		this._date.setMinutes(n.getMinutes());
+		this._date.setSeconds(n.getSeconds());
+		this._date.setMilliseconds(n.getMilliseconds());
 		return this;
 	};
 
@@ -648,7 +673,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Date}    The current date.
 	 */
 	$D.today = function () {
-		return new Date().clearTime();
+		return new DateJS().clearTime();
 	};
 
 	/** 
@@ -656,7 +681,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Date}    The current date.
 	 */
 	$D.present = function () {
-		return new Date();
+		return new DateJS();
 	};
 
 	/**
@@ -691,7 +716,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {String}  The day name
 	 */
 	$D.getDayName = function (n) {
-		return Date.CultureInfo.dayNames[n];
+		return DateJS.CultureInfo.dayNames[n];
 	};
 
 	/**
@@ -700,7 +725,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Number}  The day number
 	 */
 	$D.getDayNumberFromName = function (name) {
-		var n = Date.CultureInfo.dayNames, m = Date.CultureInfo.abbreviatedDayNames, o = Date.CultureInfo.shortestDayNames, s = name.toLowerCase();
+		var n = DateJS.CultureInfo.dayNames, m = DateJS.CultureInfo.abbreviatedDayNames, o = DateJS.CultureInfo.shortestDayNames, s = name.toLowerCase();
 		for (var i = 0; i < n.length; i++) {
 			if (n[i].toLowerCase() === s || m[i].toLowerCase() === s || o[i].toLowerCase() === s) {
 				return i;
@@ -715,7 +740,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Number}  The day number
 	 */
 	$D.getMonthNumberFromName = function (name) {
-		var n = Date.CultureInfo.monthNames, m = Date.CultureInfo.abbreviatedMonthNames, s = name.toLowerCase();
+		var n = DateJS.CultureInfo.monthNames, m = DateJS.CultureInfo.abbreviatedMonthNames, s = name.toLowerCase();
 		for (var i = 0; i < n.length; i++) {
 			if (n[i].toLowerCase() === s || m[i].toLowerCase() === s) {
 				return i;
@@ -730,7 +755,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {String}  The month name
 	 */
 	$D.getMonthName = function (n) {
-		return Date.CultureInfo.monthNames[n];
+		return DateJS.CultureInfo.monthNames[n];
 	};
 
 	/**
@@ -751,13 +776,13 @@ Date.CultureStrings.lang = "cy-GB";
 	$D.getDaysInMonth = function (year, month) {
 		if (!month && $D.validateMonth(year)) {
 				month = year;
-				year = Date.today().getFullYear();
+				year = DateJS.today().getFullYear();
 		}
 		return [31, ($D.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
 	};
  
 	$D.getTimezoneAbbreviation = function (offset, dst) {
-		var p, n = (dst || false) ? Date.CultureInfo.abbreviatedTimeZoneDST : Date.CultureInfo.abbreviatedTimeZoneStandard;
+		var p, n = (dst || false) ? DateJS.CultureInfo.abbreviatedTimeZoneDST : DateJS.CultureInfo.abbreviatedTimeZoneStandard;
 		for (p in n) {
 			if (n.hasOwnProperty(p)) {
 				if (n[p] === offset) {
@@ -769,8 +794,8 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 	
 	$D.getTimezoneOffset = function (name, dst) {
-		var i, a =[], z = Date.CultureInfo.timezones;
-		if (!name) { name = (new Date()).getTimezone()}
+		var i, a =[], z = DateJS.CultureInfo.timezones;
+		if (!name) { name = (new DateJS()).getTimezone();}
 		for (i = 0; i < z.length; i++) {
 			if (z[i].name === name.toUpperCase()) {
 				a.push(i);
@@ -791,14 +816,14 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 
 	$D.getQuarter = function (d) {
-		d = d || new Date(); // If no date supplied, use today
+		d = d || new DateJS(); // If no date supplied, use today
 		var q = [1,2,3,4];
 		return q[Math.floor(d.getMonth() / 3)]; // ~~~ is a bitwise op. Faster than Math.floor
 	};
 
 	$D.getDaysLeftInQuarter = function (d) {
-		d = d || new Date();
-		var qEnd = new Date(d);
+		d = d || new DateJS();
+		var qEnd = new DateJS(d);
 		qEnd.setMonth(qEnd.getMonth() + 3 - qEnd.getMonth() % 3, 0);
 		return Math.floor((qEnd - d) / 8.64e7);
 	};
@@ -808,7 +833,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Date}    A new Date instance
 	 */
 	$P.clone = function () {
-		return new Date(this.getTime());
+		return new DateJS(this.getTime());
 	};
 
 	/**
@@ -817,7 +842,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Number}  -1 = this is lessthan date. 0 = values are equal. 1 = this is greaterthan date.
 	 */
 	$P.compareTo = function (date) {
-		return Date.compare(this, date);
+		return DateJS.compare(this, date);
 	};
 
 	/**
@@ -826,7 +851,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true if dates are equal. false if they are not equal.
 	 */
 	$P.equals = function (date) {
-		return Date.equals(this, (date !== undefined ? date : new Date()));
+		return DateJS.equals(this, (date !== undefined ? date : new DateJS()));
 	};
 
 	/**
@@ -845,7 +870,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true if this date instance is greater than the date to compare to (or "now"), otherwise false.
 	 */
 	$P.isAfter = function (date) {
-		return this.compareTo(date || new Date()) === 1;
+		return this.compareTo(date || new DateJS()) === 1;
 	};
 
 	/**
@@ -854,7 +879,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true if this date instance is less than the date to compare to (or "now").
 	 */
 	$P.isBefore = function (date) {
-		return (this.compareTo(date || new Date()) === -1);
+		return (this.compareTo(date || new DateJS()) === -1);
 	};
 
 	/**
@@ -869,7 +894,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true if this Date instance occurs on the same Day as the supplied 'date'.
 	 */
 	$P.isToday = $P.isSameDay = function (date) {
-		return this.clone().clearTime().equals((date || new Date()).clone().clearTime());
+		return this.clone().clearTime().equals((date || new DateJS()).clone().clearTime());
 	};
 	
 	/**
@@ -1059,7 +1084,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 */
 	$P.getWeek = function (utc) {
 		// Create a copy of this date object  
-		var self, target = new Date(this.valueOf());
+		var self, target = new DateJS(this.valueOf());
 		if (utc) {
 			target.addMinutes(target.getTimezoneOffset());
 			self = target.clone();
@@ -1119,11 +1144,11 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 
 	$P.getQuarter = function () {
-		return Date.getQuarter(this);
+		return DateJS.getQuarter(this);
 	};
 
 	$P.getDaysLeftInQuarter = function () {
-		return Date.getDaysLeftInQuarter(this);
+		return DateJS.getDaysLeftInQuarter(this);
 	};
 
 	// private
@@ -1184,6 +1209,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true if within range, otherwise false.
 	 */
 	$D.validateDay = function (value, year, month) {
+		if (year === undefined || year === null || month === undefined || month === null) { return false;}
 		return validate(value, 1, $D.getDaysInMonth(year, month), "day");
 	};
 
@@ -1213,7 +1239,7 @@ Date.CultureStrings.lang = "cy-GB";
 	$D.validateYear = function (value) {
 		/**
 		 * Per ECMAScript spec the range of times supported by Date objects is 
-		 * exactly –100,000,000 days to 100,000,000 days measured relative to 
+		 * exactly -100,000,000 days to +100,000,000 days measured relative to 
 		 * midnight at the beginning of 01 January, 1970 UTC. 
 		 * This gives a range of 8,640,000,000,000,000 milliseconds to either 
 		 * side of 01 January, 1970 UTC.
@@ -1221,15 +1247,44 @@ Date.CultureStrings.lang = "cy-GB";
 		 * Earliest possible date: Tue, 20 Apr 271,822 B.C. 00:00:00 UTC
 		 * Latest possible date: Sat, 13 Sep 275,760 00:00:00 UTC
 		 */
-
 		return validate(value, -271822, 275760, "year");
 	};
+	$D.validateTimezone = function(value) {
+		var timezones = {"ACDT":1,"ACST":1,"ACT":1,"ADT":1,"AEDT":1,"AEST":1,"AFT":1,"AKDT":1,"AKST":1,"AMST":1,"AMT":1,"ART":1,"AST":1,"AWDT":1,"AWST":1,"AZOST":1,"AZT":1,"BDT":1,"BIOT":1,"BIT":1,"BOT":1,"BRT":1,"BST":1,"BTT":1,"CAT":1,"CCT":1,"CDT":1,"CEDT":1,"CEST":1,"CET":1,"CHADT":1,"CHAST":1,"CHOT":1,"ChST":1,"CHUT":1,"CIST":1,"CIT":1,"CKT":1,"CLST":1,"CLT":1,"COST":1,"COT":1,"CST":1,"CT":1,"CVT":1,"CWST":1,"CXT":1,"DAVT":1,"DDUT":1,"DFT":1,"EASST":1,"EAST":1,"EAT":1,"ECT":1,"EDT":1,"EEDT":1,"EEST":1,"EET":1,"EGST":1,"EGT":1,"EIT":1,"EST":1,"FET":1,"FJT":1,"FKST":1,"FKT":1,"FNT":1,"GALT":1,"GAMT":1,"GET":1,"GFT":1,"GILT":1,"GIT":1,"GMT":1,"GST":1,"GYT":1,"HADT":1,"HAEC":1,"HAST":1,"HKT":1,"HMT":1,"HOVT":1,"HST":1,"ICT":1,"IDT":1,"IOT":1,"IRDT":1,"IRKT":1,"IRST":1,"IST":1,"JST":1,"KGT":1,"KOST":1,"KRAT":1,"KST":1,"LHST":1,"LINT":1,"MAGT":1,"MART":1,"MAWT":1,"MDT":1,"MET":1,"MEST":1,"MHT":1,"MIST":1,"MIT":1,"MMT":1,"MSK":1,"MST":1,"MUT":1,"MVT":1,"MYT":1,"NCT":1,"NDT":1,"NFT":1,"NPT":1,"NST":1,"NT":1,"NUT":1,"NZDT":1,"NZST":1,"OMST":1,"ORAT":1,"PDT":1,"PET":1,"PETT":1,"PGT":1,"PHOT":1,"PHT":1,"PKT":1,"PMDT":1,"PMST":1,"PONT":1,"PST":1,"PYST":1,"PYT":1,"RET":1,"ROTT":1,"SAKT":1,"SAMT":1,"SAST":1,"SBT":1,"SCT":1,"SGT":1,"SLST":1,"SRT":1,"SST":1,"SYOT":1,"TAHT":1,"THA":1,"TFT":1,"TJT":1,"TKT":1,"TLT":1,"TMT":1,"TOT":1,"TVT":1,"UCT":1,"ULAT":1,"UTC":1,"UYST":1,"UYT":1,"UZT":1,"VET":1,"VLAT":1,"VOLT":1,"VOST":1,"VUT":1,"WAKT":1,"WAST":1,"WAT":1,"WEDT":1,"WEST":1,"WET":1,"WST":1,"YAKT":1,"YEKT":1,"Z":1};
+		return (timezones[value] === 1);
+	};
+	$D.validateTimezoneOffset= function(value) {
+		// timezones go from +14hrs to -12hrs, the +X hours are negative offsets.
+		return (value > -841 && value < 721);
+	};
 
+	var validateConfigObject = function (obj) {
+		var result = {}, self = this, prop, testFunc;
+		testFunc = function (prop, func, value) {
+			if (prop === "day") {
+				var month = (obj.month !== undefined) ? obj.month - self.getMonth() : self.getMonth();
+				var year = (obj.year !== undefined) ? obj.year - self.getFullYear() : self.getFullYear();
+				return $D[func](value, year, month);
+			} else {
+				return $D[func](value);
+			}
+		};
+		for (prop in obj) {
+			if (hasOwnProperty.call(obj, prop)) {
+				var func = "validate" + prop.charAt(0).toUpperCase() + prop.slice(1);
+				if ($D[func] && obj[prop] !== null && testFunc(prop, func, obj[prop])) {
+					result[prop] = obj[prop];
+				}
+			}
+		}
+		return result;
+	};
+	
 	/**
 	 * Set the value of year, month, day, hour, minute, second, millisecond of date instance using given configuration object.
 	 * Example
 	<pre><code>
-	Date.today().set( { day: 20, month: 1 } )
+	DateJS.today().set( { day: 20, month: 1 } )
 
 	new Date().set( { millisecond: 0 } )
 	</code></pre>
@@ -1238,45 +1293,32 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Date}    this
 	 */
 	$P.set = function (config) {
-		if ($D.validateMillisecond(config.millisecond)) {
-			this.addMilliseconds(config.millisecond - this.getMilliseconds());
+		config = validateConfigObject.call(this, config);
+		var key;
+		for (key in config) {
+			if (hasOwnProperty.call(config, key)) {
+				var name = key.charAt(0).toUpperCase() + key.slice(1);
+				var addFunc, getFunc;
+				if (key !== "week" && key !== "month" && key !== "timezone" && key !== "timezoneOffset") {
+					name += "s";
+				}
+				addFunc = "add" + name;
+				getFunc = "get" + name;
+				if (key === "month") {
+					addFunc = addFunc + "s";
+				} else if (key === "year"){
+					getFunc = "getFullYear";
+				}
+				if (key !== "day" && key !== "timezone" && key !== "timezoneOffset"  && key !== "week") {
+						this[addFunc](config[key] - this[getFunc]());
+				} else if ( key === "timezone" || key === "timezoneOffset" || key === "week") {
+					this["set"+name](config[key]);
+				}
+			}
 		}
-		
-		if ($D.validateSecond(config.second)) {
-			this.addSeconds(config.second - this.getSeconds());
-		}
-		
-		if ($D.validateMinute(config.minute)) {
-			this.addMinutes(config.minute - this.getMinutes());
-		}
-		
-		if ($D.validateHour(config.hour)) {
-			this.addHours(config.hour - this.getHours());
-		}
-		
-		if ($D.validateMonth(config.month)) {
-			this.addMonths(config.month - this.getMonth());
-		}
-
-		if ($D.validateYear(config.year)) {
-			this.addYears(config.year - this.getFullYear());
-		}
-		
 		/* day has to go last because you can't validate the day without first knowing the month */
-		if ($D.validateDay(config.day, this.getFullYear(), this.getMonth())) {
+		if (config.day) {
 			this.addDays(config.day - this.getDate());
-		}
-		
-		if (config.timezone) {
-			this.setTimezone(config.timezone);
-		}
-		
-		if (config.timezoneOffset) {
-			this.setTimezoneOffset(config.timezoneOffset);
-		}
-
-		if (config.week && $D.validateWeek(config.week)) {
-			this.setWeek(config.week);
 		}
 		
 		return this;
@@ -1335,27 +1377,27 @@ Date.CultureStrings.lang = "cy-GB";
 		return this.moveToFirstDayOfMonth().addDays(-1).moveToDayOfWeek(dayOfWeek, +1).addWeeks(shift);
 	};
 
+
+	var moveToN = function (getFunc, addFunc, nVal) {
+		return function (value, orient) {
+			var diff = (value - this[getFunc]() + nVal * (orient || +1)) % nVal;
+			return this[addFunc]((diff === 0) ? diff += nVal * (orient || +1) : diff);
+		};
+	};
 	/**
 	 * Move to the next or last dayOfWeek based on the orient value.
 	 * @param {Number}   The dayOfWeek to move to
 	 * @param {Number}   Forward (+1) or Back (-1). Defaults to +1. [Optional]
 	 * @return {Date}    this
 	 */
-	$P.moveToDayOfWeek = function (dayOfWeek, orient) {
-		var diff = (dayOfWeek - this.getDay() + 7 * (orient || +1)) % 7;
-		return this.addDays((diff === 0) ? diff += 7 * (orient || +1) : diff);
-	};
-
+	$P.moveToDayOfWeek = moveToN("getDay", "addDays", 7);
 	/**
 	 * Move to the next or last month based on the orient value.
 	 * @param {Number}   The month to move to. 0 = January, 11 = December
 	 * @param {Number}   Forward (+1) or Back (-1). Defaults to +1. [Optional]
 	 * @return {Date}    this
 	 */
-	$P.moveToMonth = function (month, orient) {
-		var diff = (month - this.getMonth() + 12 * (orient || +1)) % 12;
-		return this.addMonths((diff === 0) ? diff += 12 * (orient || +1) : diff);
-	};
+	$P.moveToMonth = moveToN("getMonth", "addMonths", 12);
 	/**
 	 * Get the Ordinate of the current day ("th", "st", "rd").
 	 * @return {String} 
@@ -1394,7 +1436,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true|false
 	 */
 	$P.hasDaylightSavingTime = function () {
-		return (Date.today().set({month: 0, day: 1}).getTimezoneOffset() !== Date.today().set({month: 6, day: 1}).getTimezoneOffset());
+		return (DateJS.today().set({month: 0, day: 1}).getTimezoneOffset() !== DateJS.today().set({month: 6, day: 1}).getTimezoneOffset());
 	};
 	
 	/**
@@ -1402,7 +1444,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 * @return {Boolean} true|false
 	 */
 	$P.isDaylightSavingTime = function () {
-		return Date.today().set({month: 0, day: 1}).getTimezoneOffset() !== this.getTimezoneOffset();
+		return DateJS.today().set({month: 0, day: 1}).getTimezoneOffset() !== this.getTimezoneOffset();
 	};
 
 	/**
@@ -1432,69 +1474,55 @@ Date.CultureStrings.lang = "cy-GB";
 	/**
 	 * Converts the value of the current Date object to its equivalent string representation.
 	 * Format Specifiers
-	<pre>
-	CUSTOM DATE AND TIME FORMAT STRINGS
-	Format  Description                                                                  Example
-	------  ---------------------------------------------------------------------------  -----------------------
-	 s      The seconds of the minute between 0-59.                                      "0" to "59"
-	 ss     The seconds of the minute with leading zero if required.                     "00" to "59"
-	 
-	 m      The minute of the hour between 0-59.                                         "0"  or "59"
-	 mm     The minute of the hour with leading zero if required.                        "00" or "59"
-	 
-	 h      The hour of the day between 1-12.                                            "1"  to "12"
-	 hh     The hour of the day with leading zero if required.                           "01" to "12"
-	 
-	 H      The hour of the day between 0-23.                                            "0"  to "23"
-	 HH     The hour of the day with leading zero if required.                           "00" to "23"
-	 
-	 d      The day of the month between 1 and 31.                                       "1"  to "31"
-	 dd     The day of the month with leading zero if required.                          "01" to "31"
-	 ddd    Abbreviated day name. Date.CultureInfo.abbreviatedDayNames.                                "Mon" to "Sun" 
-	 dddd   The full day name. Date.CultureInfo.dayNames.                                              "Monday" to "Sunday"
-	 
-	 M      The month of the year between 1-12.                                          "1" to "12"
-	 MM     The month of the year with leading zero if required.                         "01" to "12"
-	 MMM    Abbreviated month name. Date.CultureInfo.abbreviatedMonthNames.                            "Jan" to "Dec"
-	 MMMM   The full month name. Date.CultureInfo.monthNames.                                          "January" to "December"
-
-	 yy     The year as a two-digit number.                                              "99" or "08"
-	 yyyy   The full four digit year.                                                    "1999" or "2008"
-	 
-	 t      Displays the first character of the A.M./P.M. designator.                    "A" or "P"
-			Date.CultureInfo.amDesignator or Date.CultureInfo.pmDesignator
-	 tt     Displays the A.M./P.M. designator.                                           "AM" or "PM"
-			Date.CultureInfo.amDesignator or Date.CultureInfo.pmDesignator
-	 
-	 S      The ordinal suffix ("st, "nd", "rd" or "th") of the current day.            "st, "nd", "rd" or "th"
-
-|| *Format* || *Description* || *Example* ||
-|| d      || The CultureInfo shortDate Format Pattern                                     || "M/d/yyyy" ||
-|| D      || The CultureInfo longDate Format Pattern                                      || "dddd, MMMM dd, yyyy" ||
-|| F      || The CultureInfo fullDateTime Format Pattern                                  || "dddd, MMMM dd, yyyy h:mm:ss tt" ||
-|| m      || The CultureInfo monthDay Format Pattern                                      || "MMMM dd" ||
-|| r      || The CultureInfo rfc1123 Format Pattern                                       || "ddd, dd MMM yyyy HH:mm:ss GMT" ||
-|| s      || The CultureInfo sortableDateTime Format Pattern                              || "yyyy-MM-ddTHH:mm:ss" ||
-|| t      || The CultureInfo shortTime Format Pattern                                     || "h:mm tt" ||
-|| T      || The CultureInfo longTime Format Pattern                                      || "h:mm:ss tt" ||
-|| u      || The CultureInfo universalSortableDateTime Format Pattern                     || "yyyy-MM-dd HH:mm:ssZ" ||
-|| y      || The CultureInfo yearMonth Format Pattern                                     || "MMMM, yyyy" ||
-	 
-
-	STANDARD DATE AND TIME FORMAT STRINGS
-	Format  Description                                                                  Example ("en-US")
-	------  ---------------------------------------------------------------------------  -----------------------
-	 d      The CultureInfo shortDate Format Pattern                                     "M/d/yyyy"
-	 D      The CultureInfo longDate Format Pattern                                      "dddd, MMMM dd, yyyy"
-	 F      The CultureInfo fullDateTime Format Pattern                                  "dddd, MMMM dd, yyyy h:mm:ss tt"
-	 m      The CultureInfo monthDay Format Pattern                                      "MMMM dd"
-	 r      The CultureInfo rfc1123 Format Pattern                                       "ddd, dd MMM yyyy HH:mm:ss GMT"
-	 s      The CultureInfo sortableDateTime Format Pattern                              "yyyy-MM-ddTHH:mm:ss"
-	 t      The CultureInfo shortTime Format Pattern                                     "h:mm tt"
-	 T      The CultureInfo longTime Format Pattern                                      "h:mm:ss tt"
-	 u      The CultureInfo universalSortableDateTime Format Pattern                     "yyyy-MM-dd HH:mm:ssZ"
-	 y      The CultureInfo yearMonth Format Pattern                                     "MMMM, yyyy"
-	</pre>
+	 * CUSTOM DATE AND TIME FORMAT STRINGS
+	 * Format  Description                                                                  Example
+	 * ------  ---------------------------------------------------------------------------  -----------------------
+	 * s      The seconds of the minute between 0-59.                                      "0" to "59"
+	 * ss     The seconds of the minute with leading zero if required.                     "00" to "59"
+	 * 
+	 * m      The minute of the hour between 0-59.                                         "0"  or "59"
+	 * mm     The minute of the hour with leading zero if required.                        "00" or "59"
+	 * 
+	 * h      The hour of the day between 1-12.                                            "1"  to "12"
+	 * hh     The hour of the day with leading zero if required.                           "01" to "12"
+	 * 
+	 * H      The hour of the day between 0-23.                                            "0"  to "23"
+	 * HH     The hour of the day with leading zero if required.                           "00" to "23"
+	 * 
+	 * d      The day of the month between 1 and 31.                                       "1"  to "31"
+	 * dd     The day of the month with leading zero if required.                          "01" to "31"
+	 * ddd    Abbreviated day name. Date.CultureInfo.abbreviatedDayNames.                                "Mon" to "Sun" 
+	 * dddd   The full day name. Date.CultureInfo.dayNames.                                              "Monday" to "Sunday"
+	 * 
+	 * M      The month of the year between 1-12.                                          "1" to "12"
+	 * MM     The month of the year with leading zero if required.                         "01" to "12"
+	 * MMM    Abbreviated month name. Date.CultureInfo.abbreviatedMonthNames.                            "Jan" to "Dec"
+	 * MMMM   The full month name. Date.CultureInfo.monthNames.                                          "January" to "December"
+	 *
+	 * yy     The year as a two-digit number.                                              "99" or "08"
+	 * yyyy   The full four digit year.                                                    "1999" or "2008"
+	 * 
+	 * t      Displays the first character of the A.M./P.M. designator.                    "A" or "P"
+	 *		Date.CultureInfo.amDesignator or Date.CultureInfo.pmDesignator
+	 * tt     Displays the A.M./P.M. designator.                                           "AM" or "PM"
+	 *		Date.CultureInfo.amDesignator or Date.CultureInfo.pmDesignator
+	 * 
+	 * S      The ordinal suffix ("st, "nd", "rd" or "th") of the current day.            "st, "nd", "rd" or "th"
+	 *
+	 * STANDARD DATE AND TIME FORMAT STRINGS
+	 * Format  Description                                                                  Example
+	 *------  ---------------------------------------------------------------------------  -----------------------
+	 * d      The CultureInfo shortDate Format Pattern                                     "M/d/yyyy"
+	 * D      The CultureInfo longDate Format Pattern                                      "dddd, MMMM dd, yyyy"
+	 * F      The CultureInfo fullDateTime Format Pattern                                  "dddd, MMMM dd, yyyy h:mm:ss tt"
+	 * m      The CultureInfo monthDay Format Pattern                                      "MMMM dd"
+	 * r      The CultureInfo rfc1123 Format Pattern                                       "ddd, dd MMM yyyy HH:mm:ss GMT"
+	 * s      The CultureInfo sortableDateTime Format Pattern                              "yyyy-MM-ddTHH:mm:ss"
+	 * t      The CultureInfo shortTime Format Pattern                                     "h:mm tt"
+	 * T      The CultureInfo longTime Format Pattern                                      "h:mm:ss tt"
+	 * u      The CultureInfo universalSortableDateTime Format Pattern                     "yyyy-MM-dd HH:mm:ssZ"
+	 * y      The CultureInfo yearMonth Format Pattern                                     "MMMM, yyyy"
+	 *
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
 	 * @return {String}  A string representation of the current Date object.
 	 */
@@ -1578,25 +1606,25 @@ Date.CultureStrings.lang = "cy-GB";
 			case "yy":
 				return p(x.getFullYear());
 			case "dddd":
-				return Date.CultureInfo.dayNames[x.getDay()];
+				return DateJS.CultureInfo.dayNames[x.getDay()];
 			case "ddd":
-				return Date.CultureInfo.abbreviatedDayNames[x.getDay()];
+				return DateJS.CultureInfo.abbreviatedDayNames[x.getDay()];
 			case "dd":
 				return p(x.getDate());
 			case "d":
 				return x.getDate();
 			case "MMMM":
-				return Date.CultureInfo.monthNames[x.getMonth()];
+				return DateJS.CultureInfo.monthNames[x.getMonth()];
 			case "MMM":
-				return Date.CultureInfo.abbreviatedMonthNames[x.getMonth()];
+				return DateJS.CultureInfo.abbreviatedMonthNames[x.getMonth()];
 			case "MM":
 				return p((x.getMonth() + 1));
 			case "M":
 				return x.getMonth() + 1;
 			case "t":
-				return x.h() < 12 ? Date.CultureInfo.amDesignator.substring(0, 1) : Date.CultureInfo.pmDesignator.substring(0, 1);
+				return x.h() < 12 ? DateJS.CultureInfo.amDesignator.substring(0, 1) : DateJS.CultureInfo.pmDesignator.substring(0, 1);
 			case "tt":
-				return x.h() < 12 ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+				return x.h() < 12 ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 			case "S":
 				return ord(x.getDate());
 			case "W":
@@ -1607,7 +1635,7 @@ Date.CultureStrings.lang = "cy-GB";
 				return "Q" + x.getQuarter();
 			case "q":
 				return String(x.getQuarter());
-			default: 
+			default:
 				return m;
 			}
 		}).replace(/\[|\]/g, "") : this._toString();
@@ -1617,12 +1645,12 @@ Date.CultureStrings.lang = "cy-GB";
 
 (function () {
 	"use strict";
-	Date.Parsing = {
+	DateJS.Parsing = {
 		Exception: function (s) {
 			this.message = "Parse error at '" + s.substring(0, 10) + " ...'";
 		}
 	};
-	var $P = Date.Parsing;
+	var $P = DateJS.Parsing;
 	var dayOffsets = {
 		standard: [0,31,59,90,120,151,181,212,243,273,304,334],
 		leap: [0,31,60,91,121,152,182,213,244,274,305,335]
@@ -1634,7 +1662,7 @@ Date.CultureStrings.lang = "cy-GB";
 
 	$P.processTimeObject = function (obj) {
 		var d, jan4, date, offset, dayOffset;
-		d = new Date();
+		d = new DateJS();
 		dayOffset = ($P.isLeapYear(obj.year)) ? dayOffsets.leap : dayOffsets.standard;
 		obj.hours = obj.hours ? obj.hours : 0;
 		obj.minutes = obj.minutes ? obj.minutes : 0;
@@ -1647,7 +1675,7 @@ Date.CultureStrings.lang = "cy-GB";
 			// work out the day of the year...
 			if (!obj.dayOfYear) {
 				obj.weekDay = (!obj.weekDay && obj.weekDay !== 0) ? 1 : obj.weekDay;
-				d = new Date(obj.year, 0, 4);
+				d = new DateJS(obj.year, 0, 4);
 				jan4 = d.getDay() === 0 ? 7 : d.getDay(); // JS is 0 indexed on Sunday.
 				offset = jan4+3;
 				obj.dayOfYear = ((obj.week * 7) + (obj.weekDay === 0 ? 7 : obj.weekDay))-offset;
@@ -1665,7 +1693,7 @@ Date.CultureStrings.lang = "cy-GB";
 			obj.day = obj.day ? obj.day : 1;
 			obj.dayOfYear = dayOffset[obj.month] + obj.day;
 		}
-		date = new Date(obj.year, obj.month, obj.day, obj.hours, obj.minutes, obj.seconds, obj.milliseconds);
+		date = new DateJS(obj.year, obj.month, obj.day, obj.hours, obj.minutes, obj.seconds, obj.milliseconds);
 
 		if (obj.zone) {
 			// adjust (and calculate) for timezone here
@@ -1722,12 +1750,12 @@ Date.CultureStrings.lang = "cy-GB";
 		}
 	};
 	$P.Numeric = {
-		isNumeric: function (e){return!isNaN(parseFloat(e))&&isFinite(e)},
+		isNumeric: function (e){return!isNaN(parseFloat(e))&&isFinite(e);},
 		regex: /\b([0-1]?[0-9])([0-3]?[0-9])([0-2]?[0-9]?[0-9][0-9])\b/i,
 		parse: function (s) {
 			var data, i,
 				time = {},
-				order = Date.CultureInfo.dateElementOrder.split("");
+				order = DateJS.CultureInfo.dateElementOrder.split("");
 			if (!(this.isNumeric(s)) || // if it's non-numeric OR
 				(s[0] === "+" && s[0] === "-")) {			// It's an arithmatic string (eg +/-1000)
 				return null;
@@ -1758,51 +1786,45 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 	$P.Normalizer = {
 		parse: function (s) {
-			var $C = Date.CultureInfo;
-			var $R = Date.CultureInfo.regexPatterns;
-			var __ = Date.i18n.__;
+			var $R = DateJS.CultureInfo.regexPatterns;
+			var __ = DateJS.i18n.__;
 
-			s = s.replace($R.jan.source, "January");
-			s = s.replace($R.feb, "February");
-			s = s.replace($R.mar, "March");
-			s = s.replace($R.apr, "April");
-			s = s.replace($R.may, "May");
-			s = s.replace($R.jun, "June");
-			s = s.replace($R.jul, "July");
-			s = s.replace($R.aug, "August");
-			s = s.replace($R.sep, "September");
-			s = s.replace($R.oct, "October");
-			s = s.replace($R.nov, "November");
-			s = s.replace($R.dec, "December");
+			s = s.replace($R.jan.source, "January")
+				.replace($R.feb, "February")
+				.replace($R.mar, "March")
+				.replace($R.apr, "April")
+				.replace($R.may, "May")
+				.replace($R.jun, "June")
+				.replace($R.jul, "July")
+				.replace($R.aug, "August")
+				.replace($R.sep, "September")
+				.replace($R.oct, "October")
+				.replace($R.nov, "November")
+				.replace($R.dec, "December")
+				.replace($R.tomorrow, DateJS.today().addDays(1).toString("d"))
+				.replace($R.yesterday, DateJS.today().addDays(-1).toString("d"))
+				.replace(/\bat\b/gi, "")
+				.replace(/\s{2,}/, " ");
 
-			
-			s = s.replace($R.tomorrow, Date.today().addDays(1).toString("d"));
-			s = s.replace($R.yesterday, Date.today().addDays(-1).toString("d"));
-			// s = s.replace(new RegExp($R.today.source + "\\b", "i"), Date.today().toString("d"));
-			s = s.replace(/\bat\b/gi, ""); // replace "at", eg: "tomorrow at 3pm"
-			s = s.replace(/\s{2,}/, " "); // repliace multiple spaces with one.
-
-			s = s.replace(new RegExp("(\\b\\d\\d?("+__("AM")+"|"+__("PM")+")? )("+$R.tomorrow.source.slice(1)+")", "i"), function(full, m1, m2, m3, m4) {
-				var t = Date.today().addDays(1).toString("d");
-				var s = t + " " + m1;
-				return s;
+			var regexStr = "(\\b\\d\\d?("+__("AM")+"|"+__("PM")+")? )("+$R.tomorrow.source.slice(1)+")";
+			s = s.replace(new RegExp(regexStr, "i"), function(full, m1) {
+				var t = DateJS.today().addDays(1).toString("d");
+				return (t + " " + m1);
 			});
 
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.mon.source+'))'), Date.today().last().monday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.tue.source+'))'), Date.today().last().tuesday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.wed.source+'))'), Date.today().last().wednesday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.thu.source+'))'), Date.today().last().thursday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.fri.source+'))'), Date.today().last().friday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.sat.source+'))'), Date.today().last().saturday().toString("d"));
-			s = s.replace(new RegExp("(("+$R.past.source+')\\s('+$R.sun.source+'))'), Date.today().last().sunday().toString("d"));
-
-			// s = s.replace($R.thisMorning, "9am"))
-			s = s.replace($R.amThisMorning, function(str, am){return am;});
-			s = s.replace($R.inTheMorning, "am");
-			s = s.replace($R.thisMorning, "9am");
-			s = s.replace($R.amThisEvening, function(str, pm){return pm;});
-			s = s.replace($R.inTheEvening, "pm");
-			s = s.replace($R.thisEvening, "7pm");
+			s = s.replace(new RegExp("(("+$R.past.source+")\\s("+$R.mon.source+"))"), DateJS.today().last().monday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.tue.source+"))"), DateJS.today().last().tuesday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.wed.source+"))"), DateJS.today().last().wednesday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.thu.source+"))"), DateJS.today().last().thursday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.fri.source+"))"), DateJS.today().last().friday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sat.source+"))"), DateJS.today().last().saturday().toString("d"))
+				.replace(new RegExp("(("+$R.past.source+")\\s("+$R.sun.source+"))"), DateJS.today().last().sunday().toString("d"))
+				.replace($R.amThisMorning, function(str, am){return am;})
+				.replace($R.inTheMorning, "am")
+				.replace($R.thisMorning, "9am")
+				.replace($R.amThisEvening, function(str, pm){return pm;})
+				.replace($R.inTheEvening, "pm")
+				.replace($R.thisEvening, "7pm");
 
 			try {
 				var n = s.split(/([\s\-\.\,\/\x27]+)/);
@@ -1811,8 +1833,8 @@ Date.CultureStrings.lang = "cy-GB";
 						if (n[2].length >= 4) {
 							// ok, so we're dealing with x/year. But that's not a full date.
 							// This fixes wonky dateElementOrder parsing when set to dmy order.
-							if (Date.CultureInfo.dateElementOrder[0] === 'd') {
-								s = '1/' + n[0] + '/' + n[2]; // set to 1st of month and normalize the seperator
+							if (DateJS.CultureInfo.dateElementOrder[0] === "d") {
+								s = "1/" + n[0] + "/" + n[2]; // set to 1st of month and normalize the seperator
 							}
 						}
 					}
@@ -1826,7 +1848,7 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 }());
 (function () {
-	var $P = Date.Parsing;
+	var $P = DateJS.Parsing;
 	var _ = $P.Operators = {
 		//
 		// Tokenizers
@@ -1841,20 +1863,16 @@ Date.CultureStrings.lang = "cy-GB";
 				}
 			};
 		},
-		token: function (s) { // whitespace-eating token
+		token: function () { // whitespace-eating token
 			return function (s) {
-				return _.rtoken(new RegExp("^\s*" + s + "\s*"))(s);
-				// Removed .strip()
-				// return _.rtoken(new RegExp("^\s*" + s + "\s*"))(s).strip();
+				return _.rtoken(new RegExp("^\\s*" + s + "\\s*"))(s);
 			};
 		},
 		stoken: function (s) { // string token
 			return _.rtoken(new RegExp("^" + s));
 		},
 
-		//
 		// Atomic Operators
-		// 
 
 		until: function (p) {
 			return function (s) {
@@ -1992,7 +2010,7 @@ Date.CultureStrings.lang = "cy-GB";
 			d = d || _.rtoken(/^\s*/);
 			c = c || null;
 			
-			if (px.length == 1) {
+			if (px.length === 1) {
 				return px[0];
 			}
 			return function (s) {
@@ -2064,8 +2082,7 @@ Date.CultureStrings.lang = "cy-GB";
 					q = null;
 					p = null;
 					r = null;
-					last = (px.length == 1);
-
+					last = (px.length === 1);
 					// first, we try simply to match the current pattern
 					// if not, try the next pattern
 					try {
@@ -2102,12 +2119,12 @@ Date.CultureStrings.lang = "cy-GB";
 					// so, if this isn't the last element, we're going to see if
 					// we can get any more matches from the remaining (unmatched)
 					// elements ...
-					if (!last) {	
+					if (!last) {
 						// build a list of the remaining rules we can match against,
 						// i.e., all but the one we just matched against
 						var qx = [];
 						for (var j = 0; j < px.length ; j++) {
-							if (i != j) {
+							if (i !== j) {
 								qx.push(px[j]);
 							}
 						}
@@ -2275,7 +2292,7 @@ Date.CultureStrings.lang = "cy-GB";
 }());
 
 (function () {
-	var $D = Date;
+	var $D = DateJS;
 
 	var flattenAndCompact = function (ax) {
 		var rx = [];
@@ -2289,6 +2306,20 @@ Date.CultureStrings.lang = "cy-GB";
 			}
 		}
 		return rx;
+	};
+
+	var parseMeridian = function () {
+		if (this.meridian && (this.hour || this.hour === 0)) {
+			if (this.meridian === "a" && this.hour > 11 && DateJS.Config.strict24hr){
+				throw "Invalid hour and meridian combination";
+			} else if (this.meridian === "p" && this.hour < 12 && DateJS.Config.strict24hr){
+				throw "Invalid hour and meridian combination";
+			} else if (this.meridian === "p" && this.hour < 12) {
+				this.hour = this.hour + 12;
+			} else if (this.meridian === "a" && this.hour === 12) {
+				this.hour = 0;
+			}
+		}
 	};
 	
 	$D.Grammar = {};
@@ -2353,7 +2384,7 @@ Date.CultureStrings.lang = "cy-GB";
 			return function () {
 				var n = Number(s);
 				this.year = ((s.length > 2) ? n :
-					(n + (((n + 2000) < Date.CultureInfo.twoDigitYearMax) ? 2000 : 1900)));
+					(n + (((n + 2000) < DateJS.CultureInfo.twoDigitYearMax) ? 2000 : 1900)));
 			};
 		},
 		rday: function (s) {
@@ -2384,7 +2415,7 @@ Date.CultureStrings.lang = "cy-GB";
 				}
 			}
 			
-			var now = new Date();
+			var now = new DateJS();
 			if ((this.hour || this.minute) && (!this.month && !this.year && !this.day)) {
 				this.day = now.getDate();
 			}
@@ -2416,23 +2447,13 @@ Date.CultureStrings.lang = "cy-GB";
 				this.millisecond = 0;
 			}
 
-			if (this.meridian && (this.hour || this.hour === 0)) {
-				if (this.meridian == "a" && this.hour > 11 && Date.Config.strict24hr){
-					throw "Invalid hour and meridian combination";
-				} else if (this.meridian == "p" && this.hour < 12 && Date.Config.strict24hr){
-					throw "Invalid hour and meridian combination";
-				} else if (this.meridian == "p" && this.hour < 12) {
-					this.hour = this.hour + 12;
-				} else if (this.meridian == "a" && this.hour == 12) {
-					this.hour = 0;
-				} 
-			}
-			
+			parseMeridian.call(this);
+
 			if (this.day > $D.getDaysInMonth(this.year, this.month)) {
 				throw new RangeError(this.day + " is not a valid value for days.");
 			}
 
-			var r = new Date(this.year, this.month, this.day, this.hour, this.minute, this.second, this.millisecond);
+			var r = new DateJS(this.year, this.month, this.day, this.hour, this.minute, this.second, this.millisecond);
 			if (this.year < 100) {
 				r.setFullYear(this.year); // means years less that 100 are process correctly. JS will parse it otherwise as 1900-1999.
 			}
@@ -2445,6 +2466,7 @@ Date.CultureStrings.lang = "cy-GB";
 			return r;
 		},
 		finish: function (x) {
+			var temp;
 			x = (x instanceof Array) ? flattenAndCompact(x) : [ x ];
 
 			if (x.length === 0) {
@@ -2452,7 +2474,7 @@ Date.CultureStrings.lang = "cy-GB";
 			}
 
 			for (var i = 0 ; i < x.length ; i++) {
-				if (typeof x[i] == "function") {
+				if (typeof x[i] === "function") {
 					x[i].call(this);
 				}
 			}
@@ -2460,28 +2482,28 @@ Date.CultureStrings.lang = "cy-GB";
 			var today = $D.today();
 
 			if (this.now && !this.unit && !this.operator) {
-				return new Date();
+				return new DateJS();
 			} else if (this.now) {
-				today = new Date();
+				today = new DateJS();
 			}
 			
 			var expression = !!(this.days && this.days !== null || this.orient || this.operator);
 			
 			var gap, mod, orient;
-			orient = ((this.orient == "past" || this.operator == "subtract") ? -1 : 1);
+			orient = ((this.orient === "past" || this.operator === "subtract") ? -1 : 1);
 
-			if(!this.now && "hour minute second".indexOf(this.unit) != -1) {
+			if(!this.now && "hour minute second".indexOf(this.unit) !== -1) {
 				today.setTimeToNow();
 			}
 
-			if (this.month && this.unit == "week") {
+			if (this.month && this.unit === "week") {
 				this.value = this.month + 1;
 				delete this.month;
 				delete this.day;
 			}
 
 			if (this.month || this.month === 0) {
-				if ("year day hour minute second".indexOf(this.unit) != -1) {
+				if ("year day hour minute second".indexOf(this.unit) !== -1) {
 					if (!this.value) {
 						this.value = this.month + 1;
 					}
@@ -2491,7 +2513,7 @@ Date.CultureStrings.lang = "cy-GB";
 			}
 
 			if (!expression && this.weekday && !this.day && !this.days) {
-				var temp = Date[this.weekday]();
+				temp = DateJS[this.weekday]();
 				this.day = temp.getDate();
 				if (!this.month) {
 					this.month = temp.getMonth();
@@ -2499,14 +2521,14 @@ Date.CultureStrings.lang = "cy-GB";
 				this.year = temp.getFullYear();
 			}
 
-			if (expression && this.weekday && this.unit != "month" && this.unit != "week") {
+			if (expression && this.weekday && this.unit !== "month" && this.unit !== "week") {
 				this.unit = "day";
 				gap = ($D.getDayNumberFromName(this.weekday) - today.getDay());
 				mod = 7;
 				this.days = gap ? ((gap + (orient * mod)) % mod) : (orient * mod);
 			}
 
-			if (this.month && this.unit == "day" && this.operator) {
+			if (this.month && this.unit === "day" && this.operator) {
 				if (!this.value) {
 					this.value = (this.month + 1);
 				}
@@ -2524,12 +2546,12 @@ Date.CultureStrings.lang = "cy-GB";
 				}
 			}
 
-			if (!this.month && this.value && this.unit == "month" && !this.now) {
+			if (!this.month && this.value && this.unit === "month" && !this.now) {
 				this.month = this.value;
 				expression = true;
 			}
 
-			if (expression && (this.month || this.month === 0) && this.unit != "year") {
+			if (expression && (this.month || this.month === 0) && this.unit !== "year") {
 				this.unit = "month";
 				gap = (this.month - today.getMonth());
 				mod = 12;
@@ -2542,7 +2564,7 @@ Date.CultureStrings.lang = "cy-GB";
 			}
 
 			if (!this.value && this.operator && this.operator !== null && this[this.unit + "s"] && this[this.unit + "s"] !== null) {
-				this[this.unit + "s"] = this[this.unit + "s"] + ((this.operator == "add") ? 1 : -1) + (this.value||0) * orient;
+				this[this.unit + "s"] = this[this.unit + "s"] + ((this.operator === "add") ? 1 : -1) + (this.value||0) * orient;
 			} else if (this[this.unit + "s"] == null || this.operator != null) {
 				if (!this.value) {
 					this.value = 1;
@@ -2550,20 +2572,10 @@ Date.CultureStrings.lang = "cy-GB";
 				this[this.unit + "s"] = this.value * orient;
 			}
 
-			if (this.meridian && (this.hour || this.hour === 0)) {
-				if (this.meridian == "a" && this.hour > 11 && Date.Config.strict24hr){
-					throw "Invalid hour and meridian combination";
-				} else if (this.meridian == "p" && this.hour < 12 && Date.Config.strict24hr){
-					throw "Invalid hour and meridian combination";
-				} else if (this.meridian == "p" && this.hour < 12) {
-					this.hour = this.hour + 12;
-				} else if (this.meridian == "a" && this.hour == 12) {
-					this.hour = 0;
-				} 
-			}
+			parseMeridian.call(this);
 
 			if (this.weekday && this.unit !== "week" && !this.day && !this.days) {
-				var temp = Date[this.weekday]();
+				temp = DateJS[this.weekday]();
 				this.day = temp.getDate();
 				if (temp.getMonth() !== today.getMonth()) {
 					this.month = temp.getMonth();
@@ -2574,13 +2586,13 @@ Date.CultureStrings.lang = "cy-GB";
 				this.day = 1;
 			}
 
-			if (!this.orient && !this.operator && this.unit == "week" && this.value && !this.day && !this.month) {
-				return Date.today().setWeek(this.value);
+			if (!this.orient && !this.operator && this.unit === "week" && this.value && !this.day && !this.month) {
+				return DateJS.today().setWeek(this.value);
 			}
 
-			if (this.unit == "week" && this.weeks && !this.day && !this.month) {
+			if (this.unit === "week" && this.weeks && !this.day && !this.month) {
 				var weekday = (this.weekday) ? this.weekday : "today";
-				var d = Date[weekday]().addWeeks(this.weeks);
+				var d = DateJS[weekday]().addWeeks(this.weeks);
 				if (this.now) {
 					d.setTimeToNow();
 				}
@@ -2606,7 +2618,7 @@ Date.CultureStrings.lang = "cy-GB";
 	g.ctoken = function (keys) {
 		var fn = _C[keys];
 		if (! fn) {
-			var c = Date.CultureInfo.regexPatterns;
+			var c = DateJS.CultureInfo.regexPatterns;
 			var kx = keys.split(/\s+/), px = [];
 			for (var i = 0; i < kx.length ; i++) {
 				px.push(_.replace(_.rtoken(c[kx[i]]), kx[i]));
@@ -2616,36 +2628,40 @@ Date.CultureStrings.lang = "cy-GB";
 		return fn;
 	};
 	g.ctoken2 = function (key) {
-		return _.rtoken(Date.CultureInfo.regexPatterns[key]);
+		return _.rtoken(DateJS.CultureInfo.regexPatterns[key]);
 	};
-
+	var cacheProcessRtoken = function (token, type, eachToken) {
+		if (eachToken) {
+			return _.cache(_.process(_.each(_.rtoken(token),_.optional(g.ctoken2(eachToken))), type));
+		} else {
+			return _.cache(_.process(_.rtoken(token), type));
+		}
+	};
 	// hour, minute, second, meridian, timezone
-	g.h = _.cache(_.process(_.rtoken(/^(0[0-9]|1[0-2]|[1-9])/), t.hour));
-	g.hh = _.cache(_.process(_.rtoken(/^(0[0-9]|1[0-2])/), t.hour));
-	g.H = _.cache(_.process(_.rtoken(/^([0-1][0-9]|2[0-3]|[0-9])/), t.hour));
-	g.HH = _.cache(_.process(_.rtoken(/^([0-1][0-9]|2[0-3])/), t.hour));
-	g.m = _.cache(_.process(_.rtoken(/^([0-5][0-9]|[0-9])/), t.minute));
-	g.mm = _.cache(_.process(_.rtoken(/^[0-5][0-9]/), t.minute));
-	g.s = _.cache(_.process(_.rtoken(/^([0-5][0-9]|[0-9])/), t.second));
-	g.ss = _.cache(_.process(_.rtoken(/^[0-5][0-9]/), t.second));
-	g["ss.s"] = _.cache(_.process(_.rtoken(/^[0-5][0-9]\.[0-9]{1,3}/), t.secondAndMillisecond));
+	g.h = cacheProcessRtoken(/^(0[0-9]|1[0-2]|[1-9])/, t.hour);
+	g.hh = cacheProcessRtoken(/^(0[0-9]|1[0-2])/, t.hour);
+	g.H = cacheProcessRtoken(/^([0-1][0-9]|2[0-3]|[0-9])/, t.hour);
+	g.HH = cacheProcessRtoken(/^([0-1][0-9]|2[0-3])/, t.hour);
+	g.m = cacheProcessRtoken(/^([0-5][0-9]|[0-9])/, t.minute);
+	g.mm = cacheProcessRtoken(/^[0-5][0-9]/, t.minute);
+	g.s = cacheProcessRtoken(/^([0-5][0-9]|[0-9])/, t.second);
+	g.ss = cacheProcessRtoken(/^[0-5][0-9]/, t.second);
+	g["ss.s"] = cacheProcessRtoken(/^[0-5][0-9]\.[0-9]{1,3}/, t.secondAndMillisecond);
 	g.hms = _.cache(_.sequence([g.H, g.m, g.s], g.timePartDelimiter));
   
 	// _.min(1, _.set([ g.H, g.m, g.s ], g._t));
 	g.t = _.cache(_.process(g.ctoken2("shortMeridian"), t.meridian));
 	g.tt = _.cache(_.process(g.ctoken2("longMeridian"), t.meridian));
-	g.z = _.cache(_.process(_.rtoken(/^((\+|\-)\s*\d\d\d\d)|((\+|\-)\d\d\:?\d\d)/), t.timezone));
-	g.zz = _.cache(_.process(_.rtoken(/^((\+|\-)\s*\d\d\d\d)|((\+|\-)\d\d\:?\d\d)/), t.timezone));
+	g.z = cacheProcessRtoken(/^((\+|\-)\s*\d\d\d\d)|((\+|\-)\d\d\:?\d\d)/, t.timezone);
+	g.zz = cacheProcessRtoken(/^((\+|\-)\s*\d\d\d\d)|((\+|\-)\d\d\:?\d\d)/, t.timezone);
 	
 	g.zzz = _.cache(_.process(g.ctoken2("timezone"), t.timezone));
 	g.timeSuffix = _.each(_.ignore(g.whiteSpace), _.set([ g.tt, g.zzz ]));
 	g.time = _.each(_.optional(_.ignore(_.stoken("T"))), g.hms, g.timeSuffix);
 		  
 	// days, months, years
-	g.d = _.cache(_.process(_.each(_.rtoken(/^([0-2]\d|3[0-1]|\d)/),
-		_.optional(g.ctoken2("ordinalSuffix"))), t.day));
-	g.dd = _.cache(_.process(_.each(_.rtoken(/^([0-2]\d|3[0-1])/),
-		_.optional(g.ctoken2("ordinalSuffix"))), t.day));
+	g.d = cacheProcessRtoken(/^([0-2]\d|3[0-1]|\d)/, t.day, "ordinalSuffix");
+	g.dd = cacheProcessRtoken(/^([0-2]\d|3[0-1])/, t.day, "ordinalSuffix");
 	g.ddd = g.dddd = _.cache(_.process(g.ctoken("sun mon tue wed thu fri sat"),
 		function (s) {
 			return function () {
@@ -2653,14 +2669,14 @@ Date.CultureStrings.lang = "cy-GB";
 			};
 		}
 	));
-	g.M = _.cache(_.process(_.rtoken(/^(1[0-2]|0\d|\d)/), t.month));
-	g.MM = _.cache(_.process(_.rtoken(/^(1[0-2]|0\d)/), t.month));
+	g.M = cacheProcessRtoken(/^(1[0-2]|0\d|\d)/, t.month);
+	g.MM = cacheProcessRtoken(/^(1[0-2]|0\d)/, t.month);
 	g.MMM = g.MMMM = _.cache(_.process(g.ctoken("jan feb mar apr may jun jul aug sep oct nov dec"), t.month));
-//	g.MMM = g.MMMM = _.cache(_.process(g.ctoken(Date.CultureInfo.abbreviatedMonthNames.join(" ")), t.month));
-	g.y = _.cache(_.process(_.rtoken(/^(\d\d?)/), t.year));
-	g.yy = _.cache(_.process(_.rtoken(/^(\d\d)/), t.year));
-	g.yyy = _.cache(_.process(_.rtoken(/^(\d\d?\d?\d?)/), t.year));
-	g.yyyy = _.cache(_.process(_.rtoken(/^(\d\d\d\d)/), t.year));
+//	g.MMM = g.MMMM = _.cache(_.process(g.ctoken(DateJS.CultureInfo.abbreviatedMonthNames.join(" ")), t.month));
+	g.y = cacheProcessRtoken(/^(\d\d?)/, t.year);
+	g.yy = cacheProcessRtoken(/^(\d\d)/, t.year);
+	g.yyy = cacheProcessRtoken(/^(\d\d?\d?\d?)/, t.year);
+	g.yyyy = cacheProcessRtoken(/^(\d\d\d\d)/, t.year);
 	
 	// rolling these up into general purpose rules
 	_fn = function () {
@@ -2711,7 +2727,7 @@ Date.CultureStrings.lang = "cy-GB";
 	g.ymd = _fn(g.ddd, g.year, g.month, g.day);
 	g.dmy = _fn(g.ddd, g.day, g.month, g.year);
 	g.date = function (s) {
-		return ((g[Date.CultureInfo.dateElementOrder] || g.mdy).call(this, s));
+		return ((g[DateJS.CultureInfo.dateElementOrder] || g.mdy).call(this, s));
 	};
 
 	// parsing date format specifiers - ex: "h:m:s tt" 
@@ -2930,14 +2946,14 @@ Date.CultureStrings.lang = "cy-GB";
 		if (!s) {
 			return null;
 		}
-		if (s instanceof Date) {
+		if (s instanceof DateJS) {
 			return s.clone();
 		}
 		if (s.length >= 4 && s.charAt(0) !== "0" && s.charAt(0) !== "+"&& s.charAt(0) !== "-") { // ie: 2004 will pass, 0800 won't.
 			//  Start with specific formats
 			d = $D.Parsing.ISO.parse(s) || $D.Parsing.Numeric.parse(s);
 		}
-		if (d instanceof Date && !isNaN(d.getTime())) {
+		if (d instanceof DateJS && !isNaN(d.getTime())) {
 			return d;
 		} else {
 			// find ordinal dates (1st, 3rd, 8th, etc and remove them as they cause parsing issues)
@@ -2956,8 +2972,8 @@ Date.CultureStrings.lang = "cy-GB";
 			} else {
 				try {
 					// ok we haven't parsed it, last ditch attempt with the built-in parser.
-					t = Date._parse(s);
-					return (t || t === 0) ? new Date(t) : null;
+					t = DateJS._parse(s);
+					return (t || t === 0) ? new DateJS(t) : null;
 				} catch (e) {
 					return null;
 				}
@@ -2970,8 +2986,8 @@ Date.CultureStrings.lang = "cy-GB";
 	}
 	$D.parse = parse;
 
-	Date.getParseFunction = function (fx) {
-		var fns = Date.Grammar.allformats(fx);
+	DateJS.getParseFunction = function (fx) {
+		var fns = DateJS.Grammar.allformats(fx);
 		return function (s) {
 			var r = null;
 			for (var i = 0; i < fns.length; i++) {
@@ -3021,7 +3037,7 @@ Date.CultureStrings.lang = "cy-GB";
  *************************************************************/
  
 (function () {
-	var $D = Date, $P = $D.prototype, $N = Number.prototype;
+	var $D = DateJS, $P = $D.prototype, $N = Number.prototype;
 
 	// private
 	$P._orient = +1;
@@ -3045,14 +3061,14 @@ Date.CultureStrings.lang = "cy-GB";
 	 * Moves the date to the next instance of a date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.today().next().friday();
-	Date.today().next().fri();
-	Date.today().next().march();
-	Date.today().next().mar();
-	Date.today().next().week();
+	DateJS.today().next().friday();
+	DateJS.today().next().fri();
+	DateJS.today().next().march();
+	DateJS.today().next().mar();
+	DateJS.today().next().week();
 	</code></pre>
 	 * 
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$P.next = function () {
 		this._move = true;
@@ -3061,17 +3077,17 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 
 	/** 
-	 * Creates a new Date (Date.today()) and moves the date to the next instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
+	 * Creates a new DateJS (DateJS.today()) and moves the date to the next instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.next().friday();
-	Date.next().fri();
-	Date.next().march();
-	Date.next().mar();
-	Date.next().week();
+	DateJS.next().friday();
+	DateJS.next().fri();
+	DateJS.next().march();
+	DateJS.next().mar();
+	DateJS.next().week();
 	</code></pre>
 	 * 
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$D.next = function () {
 		return $D.today().next();
@@ -3081,14 +3097,14 @@ Date.CultureStrings.lang = "cy-GB";
 	 * Moves the date to the previous instance of a date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.today().last().friday();
-	Date.today().last().fri();
-	Date.today().last().march();
-	Date.today().last().mar();
-	Date.today().last().week();
+	DateJS.today().last().friday();
+	DateJS.today().last().fri();
+	DateJS.today().last().march();
+	DateJS.today().last().mar();
+	DateJS.today().last().week();
 	</code></pre>
 	 *  
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$P.last = $P.prev = $P.previous = function () {
 		this._move = true;
@@ -3097,17 +3113,17 @@ Date.CultureStrings.lang = "cy-GB";
 	};
 
 	/** 
-	 * Creates a new Date (Date.today()) and moves the date to the previous instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
+	 * Creates a new DateJS (DateJS.today()) and moves the date to the previous instance of the date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
 	 * Example
 	<pre><code>
-	Date.last().friday();
-	Date.last().fri();
-	Date.previous().march();
-	Date.prev().mar();
-	Date.last().week();
+	DateJS.last().friday();
+	DateJS.last().fri();
+	DateJS.previous().march();
+	DateJS.prev().mar();
+	DateJS.last().week();
 	</code></pre>
 	 *  
-	 * @return {Date}    date
+	 * @return {DateJS}    date
 	 */
 	$D.last = $D.prev = $D.previous = function () {
 		return $D.today().last();
@@ -3117,10 +3133,10 @@ Date.CultureStrings.lang = "cy-GB";
 	 * Performs a equality check when followed by either a month name, day name or .weekday() function.
 	 * Example
 	<pre><code>
-	Date.today().is().friday(); // true|false
-	Date.today().is().fri();
-	Date.today().is().march();
-	Date.today().is().mar();
+	DateJS.today().is().friday(); // true|false
+	DateJS.today().is().fri();
+	DateJS.today().is().march();
+	DateJS.today().is().mar();
 	</code></pre>
 	 *  
 	 * @return {Boolean}    true|false
@@ -3134,23 +3150,23 @@ Date.CultureStrings.lang = "cy-GB";
 	 * Determines if two date objects occur on/in exactly the same instance of the subsequent date part function.
 	 * The function .same() must be followed by a date part function (example: .day(), .month(), .year(), etc).
 	 *
-	 * An optional Date can be passed in the date part function. If now date is passed as a parameter, 'Now' is used. 
+	 * An optional DateJS can be passed in the date part function. If now date is passed as a parameter, 'Now' is used. 
 	 *
 	 * The following example demonstrates how to determine if two dates fall on the exact same day.
 	 *
 	 * Example
 	<pre><code>
-	var d1 = Date.today(); // today at 00:00
-	var d2 = new Date();   // exactly now.
+	var d1 = DateJS.today(); // today at 00:00
+	var d2 = new DateJS();   // exactly now.
 
 	// Do they occur on the same day?
 	d1.same().day(d2); // true
 	
-	 // Do they occur on the same hour?
+	// Do they occur on the same hour?
 	d1.same().hour(d2); // false, unless d2 hour is '00' (midnight).
 	
 	// What if it's the same day, but one year apart?
-	var nextYear = Date.today().add(1).year();
+	var nextYear = DateJS.today().add(1).year();
 
 	d1.same().day(nextYear); // false, because the dates must occur on the exact same day. 
 	</code></pre>
@@ -3159,7 +3175,7 @@ Date.CultureStrings.lang = "cy-GB";
 	 *
 	 * Example
 	<pre><code>
-	var future = Date.today().add(2).months();
+	var future = DateJS.today().add(2).months();
 	return someDate.same().week(future); // true|false;
 	</code></pre>
 	 *  
@@ -3261,7 +3277,7 @@ Date.CultureStrings.lang = "cy-GB";
 	$N.fromNow = $N.after = function (date) {
 		var c = {};
 		c[this._dateElement] = this;
-		return ((!date) ? new Date() : date.clone()).add(c);
+		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
 	/** 
@@ -3283,7 +3299,7 @@ Date.CultureStrings.lang = "cy-GB";
 		var c = {},
 		s = (this._dateElement[this._dateElement.length-1] !== "s") ? this._dateElement + "s" : this._dateElement;
 		c[s] = this * -1;
-		return ((!date) ? new Date() : date.clone()).add(c);
+		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
 	// Do NOT modify the following string tokens. These tokens are used to build dynamic functions.
@@ -3333,11 +3349,11 @@ Date.CultureStrings.lang = "cy-GB";
 	Date.fromObject(o2);
 	</code></pre>
 	 *  
-	 * @return {Date}    An object literal representing the original date object.
+	 * @return {DateJS}    An object literal representing the original date object.
 	 */
 	$D.fromObject = function(config) {
 		config.week = null;
-		return Date.today().set(config);
+		return DateJS.today().set(config);
 	};
 		
 	// Create day name functions and abbreviated day name functions (eg. monday(), friday(), fri()).
@@ -3356,11 +3372,11 @@ Date.CultureStrings.lang = "cy-GB";
 				// 
 				// Example
 				//
-				//   Date.today().add(1).second();
-				//   Date.march().second().monday();
+				//   DateJS.today().add(1).second();
+				//   DateJS.march().second().monday();
 				// 
 				// Things get crazy with the following...
-				//   Date.march().add(1).second().second().monday(); // but it works!!
+				//   DateJS.march().add(1).second().second().monday(); // but it works!!
 				//  
 				if (this._isSecond) {
 					this.addSeconds(this._orient * -1);
@@ -3384,23 +3400,14 @@ Date.CultureStrings.lang = "cy-GB";
 	var sdf = function (n) {
 		return function () {
 			var t = $D.today(), shift = n - t.getDay();
-			if (n === 0 && Date.CultureInfo.firstDayOfWeek === 1 && t.getDay() !== 0) {
+			if (n === 0 && DateJS.CultureInfo.firstDayOfWeek === 1 && t.getDay() !== 0) {
 				shift = shift + 7;
 			}
 			return t.addDays(shift);
 		};
 	};
 	
-	for (var i = 0; i < dx.length; i++) {
-		// Create constant static Day Name variables. Example: Date.MONDAY or Date.MON
-		$D[dx[i].toUpperCase()] = $D[dx[i].toUpperCase().substring(0, 3)] = i;
 
-		// Create Day Name functions. Example: Date.monday() or Date.mon()
-		$D[dx[i]] = $D[dx[i].substring(0, 3)] = sdf(i);
-
-		// Create Day Name instance functions. Example: Date.today().next().monday()
-		$P[dx[i]] = $P[dx[i].substring(0, 3)] = df(i);
-	}
 	
 	// Create month name functions and abbreviated month name functions (eg. january(), march(), mar()).
 	var month_instance_functions = function (n) {
@@ -3419,18 +3426,22 @@ Date.CultureStrings.lang = "cy-GB";
 		};
 	};
 	
-	for (var j = 0; j < mx.length; j++) {
-		// Create constant static Month Name variables. Example: Date.MARCH or Date.MAR
-		$D[mx[j].toUpperCase()] = $D[mx[j].toUpperCase().substring(0, 3)] = j;
+	var processTerms = function (names, staticFunc, instanceFunc) {
+		for (var i = 0; i < names.length; i++) {
+			// Create constant static Name variables.
+			$D[names[i].toUpperCase()] = $D[names[i].toUpperCase().substring(0, 3)] = i;
+			// Create Name functions.
+			$D[names[i]] = $D[names[i].substring(0, 3)] = staticFunc(i);
+			// Create Name instance functions.
+			$P[names[i]] = $P[names[i].substring(0, 3)] = instanceFunc(i);
+		}
 
-		// Create Month Name functions. Example: Date.march() or Date.mar()
-		$D[mx[j]] = $D[mx[j].substring(0, 3)] = month_static_functions(j);
+	};
 
-		// Create Month Name instance functions. Example: Date.today().next().march()
-		$P[mx[j]] = $P[mx[j].substring(0, 3)] = month_instance_functions(j);
-	}
+	processTerms(dx, sdf, df);
+	processTerms(mx, month_static_functions, month_instance_functions);
 	
-	// Create date element functions and plural date element functions used with Date (eg. day(), days(), months()).
+	// Create date element functions and plural date element functions used with DateJS (eg. day(), days(), months()).
 	var ef = function (j) {
 		return function () {
 			// if the .second() function was called earlier, the _orient 
@@ -3443,7 +3454,7 @@ Date.CultureStrings.lang = "cy-GB";
 			if (this._same) {
 				this._same = this._is = false;
 				var o1 = this.toObject(),
-					o2 = (arguments[0] || new Date()).toObject(),
+					o2 = (arguments[0] || new DateJS()).toObject(),
 					v = "",
 					k = j.toLowerCase();
 
@@ -3481,7 +3492,7 @@ Date.CultureStrings.lang = "cy-GB";
 	for (var k = 0; k < px.length; k++) {
 		de = px[k].toLowerCase();
 		if(de !== "weekday") {
-			// Create date element functions and plural date element functions used with Date (eg. day(), days(), months()).
+			// Create date element functions and plural date element functions used with DateJS (eg. day(), days(), months()).
 			$P[de] = $P[de + "s"] = ef(px[k]);
 			
 			// Create date element functions and plural date element functions used with Number (eg. day(), days(), months()).
@@ -3516,7 +3527,7 @@ Date.CultureStrings.lang = "cy-GB";
 }());
 
 (function () {
-	var $D = Date,
+	var $D = DateJS,
 		$P = $D.prototype,
 		// $C = $D.CultureInfo, // not used atm
 		$f = [],
@@ -3526,162 +3537,153 @@ Date.CultureStrings.lang = "cy-GB";
 			}
 			return ("000" + s).slice(l * -1);
 		};
-	/**
+	/*
 	 * Converts a PHP format string to Java/.NET format string. 
 	 * A PHP format string can be used with .$format or .format.
 	 * A Java/.NET format string can be used with .toString().
 	 * The .parseExact function will only accept a Java/.NET format string
 	 *
 	 * Example
-	 <pre>
-	 var f1 = "%m/%d/%y"
-	 var f2 = Date.normalizeFormat(f1); // "MM/dd/yy"
-
-	 new Date().format(f1);    // "04/13/08"
-	 new Date().$format(f1);   // "04/13/08"
-	 new Date().toString(f2);  // "04/13/08"
-
-	 var date = Date.parseExact("04/13/08", f2); // Sun Apr 13 2008
-	 </pre>
+	 * var f1 = "%m/%d/%y"
+	 * var f2 = Date.normalizeFormat(f1);	// "MM/dd/yy"
+	 * 
+	 * new Date().format(f1);	// "04/13/08"
+	 * new Date().$format(f1);	// "04/13/08"
+	 * new Date().toString(f2);	// "04/13/08"
+	 *  
+	 * var date = DateJS.parseExact("04/13/08", f2); // Sun Apr 13 2008
+	 * 
 	 * @param {String}   A PHP format string consisting of one or more format spcifiers.
 	 * @return {String}  The PHP format converted to a Java/.NET format string.
 	 */
 	$D.normalizeFormat = function (format) {
 		// function does nothing atm
 		// $f = [];
-		// var t = new Date().$format(format);
+		// var t = new DateJS().$format(format);
 		// return $f.join("");
 		return format;
 	};
 	/**
 	 * Format a local Unix timestamp according to locale settings
 	 * 
-	 * Example
-	 <pre>
-	 Date.strftime("%m/%d/%y", new Date());       // "04/13/08"
-	 Date.strftime("c", "2008-04-13T17:52:03Z");  // "04/13/08"
-	 </pre>
+	 * Example:
+	 * DateJS.strftime("%m/%d/%y", new DateJS());		// "04/13/08"
+	 * DateJS.strftime("c", "2008-04-13T17:52:03Z");	// "04/13/08"
+	 * 
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
 	 * @param {Number}   The number representing the number of seconds that have elapsed since January 1, 1970 (local time). 
-	 * @return {String}  A string representation of the current Date object.
+	 * @return {String}  A string representation of the current DateJS object.
 	 */
 	$D.strftime = function (format, time) {
-		return new Date(time * 1000).$format(format);
+		return new DateJS(time * 1000).$format(format);
 	};
 	/**
-	 * Parse any textual datetime description into a Unix timestamp. 
+	 * Parse any textual DateJStime description into a Unix timestamp. 
 	 * A Unix timestamp is the number of seconds that have elapsed since January 1, 1970 (midnight UTC/GMT).
 	 * 
-	 * Example
-	 <pre>
-	 Date.strtotime("04/13/08");              // 1208044800
-	 Date.strtotime("1970-01-01T00:00:00Z");  // 0
-	 </pre>
+	 * Example:
+	 * DateJS.strtotime("04/13/08");				// 1208044800
+	 * DateJS.strtotime("1970-01-01T00:00:00Z");	// 0
+	 * 
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
-	 * @param {Object}   A string or date object.
-	 * @return {String}  A string representation of the current Date object.
+	 * @param {Object}   A string or DateJS object.
+	 * @return {String}  A string representation of the current DateJS object.
 	 */
 	$D.strtotime = function (time) {
 		var d = $D.parse(time);
 		d.addMinutes(d.getTimezoneOffset() * -1);
 		return Math.round($D.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()) / 1000);
 	};
-	/**
+	/*
 	 * Converts the value of the current Date object to its equivalent string representation using a PHP/Unix style of date format specifiers.
-	 *
-	 * The following descriptions are from http://www.php.net/strftime and http://www.php.net/manual/en/function.date.php. 
-	 * Copyright � 2001-2008 The PHP Group
-	 * 
 	 * Format Specifiers
-	 <pre>
-	Format  Description                                                                  Example
-	------  ---------------------------------------------------------------------------  -----------------------
-	 %a     abbreviated weekday name according to the current localed                    "Mon" through "Sun"
-	 %A     full weekday name according to the current locale                            "Sunday" through "Saturday"
-	 %b     abbreviated month name according to the current locale                       "Jan" through "Dec"
-	 %B     full month name according to the current locale                              "January" through "December"
-	 %c     preferred date and time representation for the current locale                "4/13/2008 12:33 PM"
-	 %C     century number (the year divided by 100 and truncated to an integer)         "00" to "99"
-	 %d     day of the month as a decimal number                                         "01" to "31"
-	 %D     same as %m/%d/%y                                                             "04/13/08"
-	 %e     day of the month as a decimal number, a single digit is preceded by a space  "1" to "31"
-	 %g     like %G, but without the century                                             "08"
-	 %G     The 4-digit year corresponding to the ISO week number (see %V).              "2008"
-			This has the same format and value as %Y, except that if the ISO week number 
-			belongs to the previous or next year, that year is used instead.
-	 %h     same as %b                                                                   "Jan" through "Dec"
-	 %H     hour as a decimal number using a 24-hour clock                               "00" to "23"
-	 %I     hour as a decimal number using a 12-hour clock                               "01" to "12"
-	 %j     day of the year as a decimal number                                          "001" to "366"
-	 %m     month as a decimal number                                                    "01" to "12"
-	 %M     minute as a decimal number                                                   "00" to "59"
-	 %n     newline character                                                            "\n"
-	 %p     either "am" or "pm" according to the given time value, or the                "am" or "pm"
-			corresponding strings for the current locale
-	 %r     time in a.m. and p.m. notation                                               "8:44 PM"
-	 %R     time in 24 hour notation                                                     "20:44"
-	 %S     second as a decimal number                                                   "00" to "59"
-	 %t     tab character                                                                "\t"
-	 %T     current time, equal to %H:%M:%S                                              "12:49:11"
-	 %u     weekday as a decimal number ["1", "7"], with "1" representing Monday         "1" to "7"
-	 %U     week number of the current year as a decimal number, starting with the       "0" to ("52" or "53")
-			first Sunday as the first day of the first week
-	 %V     The ISO 8601:1988 week number of the current year as a decimal number,       "00" to ("52" or "53")
-			range 01 to 53, where week 1 is the first week that has at least 4 days 
-			in the current year, and with Monday as the first day of the week. 
-			(Use %G or %g for the year component that corresponds to the week number 
-			for the specified timestamp.)
-	 %W     week number of the current year as a decimal number, starting with the       "00" to ("52" or "53")
-			first Monday as the first day of the first week
-	 %w     day of the week as a decimal, Sunday being "0"                               "0" to "6"
-	 %x     preferred date representation for the current locale without the time        "4/13/2008"
-	 %X     preferred time representation for the current locale without the date        "12:53:05"
-	 %y     year as a decimal number without a century                                   "00" "99"
-	 %Y     year as a decimal number including the century                               "2008"
-	 %Z     time zone or name or abbreviation                                            "UTC", "EST", "PST"
-	 %z     same as %Z 
-	 %%     a literal "%" character                                                      "%"
-	 d      Day of the month, 2 digits with leading zeros                                "01" to "31"
-	 D      A textual representation of a day, three letters                             "Mon" through "Sun"
-	 j      Day of the month without leading zeros                                       "1" to "31"
-	 l      A full textual representation of the day of the week (lowercase "L")         "Sunday" through "Saturday"
-	 N      ISO-8601 numeric representation of the day of the week (added in PHP 5.1.0)  "1" (for Monday) through "7" (for Sunday)
-	 S      English ordinal suffix for the day of the month, 2 characters                "st", "nd", "rd" or "th". Works well with j
-	 w      Numeric representation of the day of the week                                "0" (for Sunday) through "6" (for Saturday)
-	 z      The day of the year (starting from "0")                                      "0" through "365"      
-	 W      ISO-8601 week number of year, weeks starting on Monday                       "00" to ("52" or "53")
-	 F      A full textual representation of a month, such as January or March           "January" through "December"
-	 m      Numeric representation of a month, with leading zeros                        "01" through "12"
-	 M      A short textual representation of a month, three letters                     "Jan" through "Dec"
-	 n      Numeric representation of a month, without leading zeros                     "1" through "12"
-	 t      Number of days in the given month                                            "28" through "31"
-	 L      Whether it's a leap year                                                     "1" if it is a leap year, "0" otherwise
-	 o      ISO-8601 year number. This has the same value as Y, except that if the       "2008"
-			ISO week number (W) belongs to the previous or next year, that year 
-			is used instead.
-	 Y      A full numeric representation of a year, 4 digits                            "2008"
-	 y      A two digit representation of a year                                         "08"
-	 a      Lowercase Ante meridiem and Post meridiem                                    "am" or "pm"
-	 A      Uppercase Ante meridiem and Post meridiem                                    "AM" or "PM"
-	 B      Swatch Internet time                                                         "000" through "999"
-	 g      12-hour format of an hour without leading zeros                              "1" through "12"
-	 G      24-hour format of an hour without leading zeros                              "0" through "23"
-	 h      12-hour format of an hour with leading zeros                                 "01" through "12"
-	 H      24-hour format of an hour with leading zeros                                 "00" through "23"
-	 i      Minutes with leading zeros                                                   "00" to "59"
-	 s      Seconds, with leading zeros                                                  "00" through "59"
-	 u      Milliseconds                                                                 "54321"
-	 e      Timezone identifier                                                          "UTC", "EST", "PST"
-	 I      Whether or not the date is in daylight saving time (uppercase i)             "1" if Daylight Saving Time, "0" otherwise
-	 O      Difference to Greenwich time (GMT) in hours                                  "+0200", "-0600"
-	 P      Difference to Greenwich time (GMT) with colon between hours and minutes      "+02:00", "-06:00"
-	 T      Timezone abbreviation                                                        "UTC", "EST", "PST"
-	 Z      Timezone offset in seconds. The offset for timezones west of UTC is          "-43200" through "50400"
-			always negative, and for those east of UTC is always positive.
-	 c      ISO 8601 date                                                                "2004-02-12T15:19:21+00:00"
-	 r      RFC 2822 formatted date                                                      "Thu, 21 Dec 2000 16:01:07 +0200"
-	 U      Seconds since the Unix Epoch (January 1 1970 00:00:00 GMT)                   "0"     
-	 </pre>
+	 * Format  Description																	Example
+	 * ------  ---------------------------------------------------------------------------	-----------------------
+	 * %a		abbreviated weekday name according to the current localed					"Mon" through "Sun"
+	 * %A		full weekday name according to the current localed							"Sunday" through "Saturday"
+	 * %b		abbreviated month name according to the current localed						"Jan" through "Dec"
+	 * %B		full month name according to the current locale								"January" through "December"
+	 * %c		preferred date and time representation for the current locale				"4/13/2008 12:33 PM"
+	 * %C		century number (the year divided by 100 and truncated to an integer)		"00" to "99"
+	 * %d		day of the month as a decimal number										"01" to "31"
+	 * %D		same as %m/%d/%y															"04/13/08"
+	 * %e		day of the month as a decimal number, a single digit is preceded by a space	"1" to "31"
+	 * %g		like %G, but without the century											"08"
+	 * %G		The 4-digit year corresponding to the ISO week number (see %V).				"2008"
+	 *		This has the same format and value as %Y, except that if the ISO week number
+	 *		belongs to the previous or next year, that year is used instead.
+	 * %h		same as %b																	"Jan" through "Dec"
+	 * %H		hour as a decimal number using a 24-hour clock.								"00" to "23"
+	 * %I		hour as a decimal number using a 12-hour clock.								"01" to "12"
+	 * %j		day of the year as a decimal number.										"001" to "366"
+	 * %m		month as a decimal number.													"01" to "12"
+	 * %M		minute as a decimal number.													"00" to "59"
+	 * %n		newline character		"\n"
+	 * %p		either "am" or "pm" according to the given time value, or the				"am" or "pm"
+	 *		corresponding strings for the current locale.
+	 * %r		time in a.m. and p.m. notation												"8:44 PM"
+	 * %R		time in 24 hour notation													"20:44"
+	 * %S		second as a decimal number													"00" to "59"
+	 * %t		tab character																"\t"
+	 * %T		current time, equal to %H:%M:%S												"12:49:11"
+	 * %u		weekday as a decimal number ["1", "7"], with "1" representing Monday		"1" to "7"
+	 * %U		week number of the current year as a decimal number, starting with the		"0" to ("52" or "53")
+	 *		first Sunday as the first day of the first week
+	 * %V		The ISO 8601:1988 week number of the current year as a decimal number,		"00" to ("52" or "53")
+	 *		range 01 to 53, where week 1 is the first week that has at least 4 days
+	 *		in the current year, and with Monday as the first day of the week.
+	 *		(Use %G or %g for the year component that corresponds to the week number
+	 *		for the specified timestamp.)
+	 * %W		week number of the current year as a decimal number, starting with the		"00" to ("52" or "53")
+	 *		first Monday as the first day of the first week
+	 * %w		day of the week as a decimal, Sunday being "0"								"0" to "6"
+	 * %x		preferred date representation for the current locale without the time		"4/13/2008"
+	 * %X		preferred time representation for the current locale without the date		"12:53:05"
+	 * %y		year as a decimal number without a century									"00" "99"
+	 * %Y		year as a decimal number including the century								"2008"
+	 * %Z		time zone or name or abbreviation											"UTC", "EST", "PST"
+	 * %z		same as %Z 
+	 * %%		a literal "%" characters													"%"
+	 * d		Day of the month, 2 digits with leading zeros								"01" to "31"
+	 * D		A textual representation of a day, three letters							"Mon" through "Sun"
+	 * j		Day of the month without leading zeros										"1" to "31"
+	 * l		A full textual representation of the day of the week (lowercase "L")		"Sunday" through "Saturday"
+	 * N		ISO-8601 numeric representation of the day of the week (added in PHP 5.1.0)	"1" (for Monday) through "7" (for Sunday)
+	 * S		English ordinal suffix for the day of the month, 2 characters				"st", "nd", "rd" or "th". Works well with j
+	 * w		Numeric representation of the day of the week								"0" (for Sunday) through "6" (for Saturday)
+	 * z		The day of the year (starting from "0")										"0" through "365"		
+	 * W		ISO-8601 week number of year, weeks starting on Monday						"00" to ("52" or "53")
+	 * F		A full textual representation of a month, such as January or March			"January" through "December"
+	 * m		Numeric representation of a month, with leading zeros						"01" through "12"
+	 * M		A short textual representation of a month, three letters					"Jan" through "Dec"
+	 * n		Numeric representation of a month, without leading zeros					"1" through "12"
+	 * t		Number of days in the given month											"28" through "31"
+	 * L		Whether it's a leap year													"1" if it is a leap year, "0" otherwise
+	 * o		ISO-8601 year number. This has the same value as Y, except that if the		"2008"
+	 *		ISO week number (W) belongs to the previous or next year, that year 
+	 *		is used instead.
+	 * Y		A full numeric representation of a year, 4 digits							"2008"
+	 * y		A two digit representation of a year										"08"
+	 * a		Lowercase Ante meridiem and Post meridiem									"am" or "pm"
+	 * A		Uppercase Ante meridiem and Post meridiem									"AM" or "PM"
+	 * B		Swatch Internet time														"000" through "999"
+	 * g		12-hour format of an hour without leading zeros								"1" through "12"
+	 * G		24-hour format of an hour without leading zeros								"0" through "23"
+	 * h		12-hour format of an hour with leading zeros								"01" through "12"
+	 * H		24-hour format of an hour with leading zeros								"00" through "23"
+	 * i		Minutes with leading zeros													"00" to "59"
+	 * s		Seconds, with leading zeros													"00" through "59"
+	 * u		Milliseconds																"54321"
+	 * e		Timezone identifier															"UTC", "EST", "PST"
+	 * I		Whether or not the date is in daylight saving time (uppercase i)			"1" if Daylight Saving Time, "0" otherwise
+	 * O		Difference to Greenwich time (GMT) in hours									"+0200", "-0600"
+	 * P		Difference to Greenwich time (GMT) with colon between hours and minutes		"+02:00", "-06:00"
+	 * T		Timezone abbreviation														"UTC", "EST", "PST"
+	 * Z		Timezone offset in seconds. The offset for timezones west of UTC is			"-43200" through "50400"
+	 *			always negative, and for those east of UTC is always positive.
+	 * c		ISO 8601 date																"2004-02-12T15:19:21+00:00"
+	 * r		RFC 2822 formatted date														"Thu, 21 Dec 2000 16:01:07 +0200"
+	 * U		Seconds since the Unix Epoch (January 1 1970 00:00:00 GMT)					"0"
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
 	 * @return {String}  A string representation of the current Date object.
 	 */
@@ -3697,133 +3699,133 @@ Date.CultureStrings.lang = "cy-GB";
 				return m.replace("\\", "").replace("%%", "%");
 			}
 			switch (m) {
-			case "d":
-			case "%d":
-				return t("dd");
-			case "D":
-			case "%a":
-				return t("ddd");
-			case "j":
-			case "%e":
-				return t("d", true);
-			case "l":
-			case "%A":
-				return t("dddd");
-			case "N":
-			case "%u":
-				return x.getDay() + 1;
-			case "S":
-				return t("S");
-			case "w":
-			case "%w":
-				return x.getDay();
-			case "z":
-				return x.getOrdinalNumber();
-			case "%j":
-				return p(x.getOrdinalNumber(), 3);
-			case "%U":
-				var d1 = x.clone().set({month: 0, day: 1}).addDays(-1).moveToDayOfWeek(0),
-					d2 = x.clone().addDays(1).moveToDayOfWeek(0, -1);
-				return (d2 < d1) ? "00" : p((d2.getOrdinalNumber() - d1.getOrdinalNumber()) / 7 + 1);
-			case "W":
-			case "%V":
-				return x.getISOWeek();
-			case "%W":
-				return p(x.getWeek());
-			case "F":
-			case "%B":
-				return t("MMMM");
-			case "m":
-			case "%m":
-				return t("MM");
-			case "M":
-			case "%b":
-			case "%h":
-				return t("MMM");
-			case "n":
-				return t("M");
-			case "t":
-				return $D.getDaysInMonth(x.getFullYear(), x.getMonth());
-			case "L":
-				return ($D.isLeapYear(x.getFullYear())) ? 1 : 0;
-			case "o":
-			case "%G":
-				return x.setWeek(x.getISOWeek()).toString("yyyy");
-			case "%g":
-				return x.$format("%G").slice(-2);
-			case "Y":
-			case "%Y":
-				return t("yyyy");
-			case "y":
-			case "%y":
-				return t("yy");
-			case "a":
-			case "%p":
-				return t("tt").toLowerCase();
-			case "A":
-				return t("tt").toUpperCase();
-			case "g":
-			case "%I":
-				return t("h");
-			case "G":
-				return t("H");
-			case "h":
-				return t("hh");
-			case "H":
-			case "%H":
-				return t("HH");
-			case "i":
-			case "%M":
-				return t("mm");
-			case "s":
-			case "%S":
-				return t("ss");
-			case "u":
-				return p(x.getMilliseconds(), 3);
-			case "I":
-				return (x.isDaylightSavingTime()) ? 1 : 0;
-			case "O":
-				return x.getUTCOffset();
-			case "P":
-				y = x.getUTCOffset();
-				return y.substring(0, y.length - 2) + ":" + y.substring(y.length - 2);
-			case "e":
-			case "T":
-			case "%z":
-			case "%Z":
-				return x.getTimezone();
-			case "Z":
-				return x.getTimezoneOffset() * -60;
-			case "B":
-				var now = new Date();
-				return Math.floor(((now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (now.getTimezoneOffset() + 60) * 60) / 86.4);
-			case "c":
-				return x.toISOString().replace(/\"/g, "");
-			case "U":
-				return $D.strtotime("now");
-			case "%c":
-				return t("d") + " " + t("t");
-			case "%C":
-				return Math.floor(x.getFullYear() / 100 + 1);
-			case "%D":
-				return t("MM/dd/yy");
-			case "%n":
-				return "\\n";
-			case "%t":
-				return "\\t";
-			case "%r":
-				return t("hh:mm tt");
-			case "%R":
-				return t("H:mm");
-			case "%T":
-				return t("H:mm:ss");
-			case "%x":
-				return t("d");
-			case "%X":
-				return t("t");
-			default:
-				$f.push(m);
-				return m;
+				case "d":
+				case "%d":
+					return t("dd");
+				case "D":
+				case "%a":
+					return t("ddd");
+				case "j":
+				case "%e":
+					return t("d", true);
+				case "l":
+				case "%A":
+					return t("dddd");
+				case "N":
+				case "%u":
+					return x.getDay() + 1;
+				case "S":
+					return t("S");
+				case "w":
+				case "%w":
+					return x.getDay();
+				case "z":
+					return x.getOrdinalNumber();
+				case "%j":
+					return p(x.getOrdinalNumber(), 3);
+				case "%U":
+					var d1 = x.clone().set({month: 0, day: 1}).addDays(-1).moveToDayOfWeek(0),
+						d2 = x.clone().addDays(1).moveToDayOfWeek(0, -1);
+					return (d2 < d1) ? "00" : p((d2.getOrdinalNumber() - d1.getOrdinalNumber()) / 7 + 1);
+				case "W":
+				case "%V":
+					return x.getISOWeek();
+				case "%W":
+					return p(x.getWeek());
+				case "F":
+				case "%B":
+					return t("MMMM");
+				case "m":
+				case "%m":
+					return t("MM");
+				case "M":
+				case "%b":
+				case "%h":
+					return t("MMM");
+				case "n":
+					return t("M");
+				case "t":
+					return $D.getDaysInMonth(x.getFullYear(), x.getMonth());
+				case "L":
+					return ($D.isLeapYear(x.getFullYear())) ? 1 : 0;
+				case "o":
+				case "%G":
+					return x.setWeek(x.getISOWeek()).toString("yyyy");
+				case "%g":
+					return x.$format("%G").slice(-2);
+				case "Y":
+				case "%Y":
+					return t("yyyy");
+				case "y":
+				case "%y":
+					return t("yy");
+				case "a":
+				case "%p":
+					return t("tt").toLowerCase();
+				case "A":
+					return t("tt").toUpperCase();
+				case "g":
+				case "%I":
+					return t("h");
+				case "G":
+					return t("H");
+				case "h":
+					return t("hh");
+				case "H":
+				case "%H":
+					return t("HH");
+				case "i":
+				case "%M":
+					return t("mm");
+				case "s":
+				case "%S":
+					return t("ss");
+				case "u":
+					return p(x.getMilliseconds(), 3);
+				case "I":
+					return (x.isDaylightSavingTime()) ? 1 : 0;
+				case "O":
+					return x.getUTCOffset();
+				case "P":
+					y = x.getUTCOffset();
+					return y.substring(0, y.length - 2) + ":" + y.substring(y.length - 2);
+				case "e":
+				case "T":
+				case "%z":
+				case "%Z":
+					return x.getTimezone();
+				case "Z":
+					return x.getTimezoneOffset() * -60;
+				case "B":
+					var now = new DateJS();
+					return Math.floor(((now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (now.getTimezoneOffset() + 60) * 60) / 86.4);
+				case "c":
+					return x.toISOString().replace(/\"/g, "");
+				case "U":
+					return $D.strtotime("now");
+				case "%c":
+					return t("d") + " " + t("t");
+				case "%C":
+					return Math.floor(x.getFullYear() / 100 + 1);
+				case "%D":
+					return t("MM/dd/yy");
+				case "%n":
+					return "\\n";
+				case "%t":
+					return "\\t";
+				case "%r":
+					return t("hh:mm tt");
+				case "%R":
+					return t("H:mm");
+				case "%T":
+					return t("H:mm:ss");
+				case "%x":
+					return t("d");
+				case "%X":
+					return t("t");
+				default:
+					$f.push(m);
+					return m;
 			}
 		}) : this._toString();
 	};
@@ -3898,12 +3900,12 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 	};
 	
 	this.compareTo = function (time) {
-		var t1 = new Date(1970, 1, 1, this.getHours(), this.getMinutes(), this.getSeconds()), t2;
+		var t1 = new DateJS(1970, 1, 1, this.getHours(), this.getMinutes(), this.getSeconds()), t2;
 		if (time === null) {
-			t2 = new Date(1970, 1, 1, 0, 0, 0);
+			t2 = new DateJS(1970, 1, 1, 0, 0, 0);
 		}
 		else {
-			t2 = new Date(1970, 1, 1, time.getHours(), time.getMinutes(), time.getSeconds());
+			t2 = new DateJS(1970, 1, 1, time.getHours(), time.getMinutes(), time.getSeconds());
 		}
 		return (t1 < t2) ? -1 : (t1 > t2) ? 1 : 0;
 	};
@@ -3945,7 +3947,7 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 	};
 
 	this.getDesignator = function () {
-		return (this.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+		return (this.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 	};
 
 	this.toString = function (format) {
@@ -3987,9 +3989,9 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
 			case "ss":
 				return me.p(me.getSeconds());
 			case "t":
-				return ((me.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator).substring(0, 1);
+				return ((me.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator).substring(0, 1);
 			case "tt":
-				return (me.getHours() < 12) ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+				return (me.getHours() < 12) ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 			}
 		}
 		) : this._toString();
@@ -4001,12 +4003,12 @@ var TimeSpan = function (days, hours, minutes, seconds, milliseconds) {
  * Gets the time of day for this date instances. 
  * @return {TimeSpan} TimeSpan
  */
-Date.prototype.getTimeOfDay = function () {
+DateJS.prototype.getTimeOfDay = function () {
 	return new TimeSpan(0, this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 };
 
 /* 
- * TimePeriod(startDate, endDate);
+ * TimePeriod(startDateJS, endDateJS);
  * TimePeriod(years, months, days, hours, minutes, seconds, milliseconds);
  */
 var TimePeriod = function (years, months, days, hours, minutes, seconds, milliseconds) {
@@ -4040,7 +4042,7 @@ var TimePeriod = function (years, months, days, hours, minutes, seconds, millise
 		this.setMinutes(minutes);
 		this.setSeconds(seconds);
 		this.setMilliseconds(milliseconds);
-	} else if (arguments.length === 2 && arguments[0] instanceof Date && arguments[1] instanceof Date) {
+	} else if (arguments.length === 2 && arguments[0] instanceof DateJS && arguments[1] instanceof DateJS) {
 		// startDate and endDate as arguments
 	
 		var d1 = years.clone();

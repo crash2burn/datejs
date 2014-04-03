@@ -75,13 +75,15 @@ module.exports = function(grunt) {
 			},
 			basic: {
 				src: [
+					'<%= dirs.core %>/datejs.js',
 					'<%= dirs.core %>/i18n.js',
 					'<%= dirs.core %>/core.js',
 					'<%= dirs.core %>/format_parser.js',
 					'<%= dirs.core %>/parser.js',
 					'<%= dirs.core %>/sugarpak.js',
 					'<%= dirs.core %>/extras.js',
-					'<%= dirs.core %>/time.js'
+					'<%= dirs.core %>/time.js',
+					'<%= dirs.core %>/onEnd.js'
 				],
 				dest: '<%= dirs.build %>/development/date.js'
 			}

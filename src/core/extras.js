@@ -1,5 +1,6 @@
+module.exports = function(DateJS) {
 (function () {
-	var $D = Date,
+	var $D = DateJS,
 		$P = $D.prototype,
 		// $C = $D.CultureInfo, // not used atm
 		$f = [],
@@ -23,7 +24,7 @@
 	 * new Date().$format(f1);	// "04/13/08"
 	 * new Date().toString(f2);	// "04/13/08"
 	 *  
-	 * var date = Date.parseExact("04/13/08", f2); // Sun Apr 13 2008
+	 * var date = DateJS.parseExact("04/13/08", f2); // Sun Apr 13 2008
 	 * 
 	 * @param {String}   A PHP format string consisting of one or more format spcifiers.
 	 * @return {String}  The PHP format converted to a Java/.NET format string.
@@ -31,7 +32,7 @@
 	$D.normalizeFormat = function (format) {
 		// function does nothing atm
 		// $f = [];
-		// var t = new Date().$format(format);
+		// var t = new DateJS().$format(format);
 		// return $f.join("");
 		return format;
 	};
@@ -39,27 +40,27 @@
 	 * Format a local Unix timestamp according to locale settings
 	 * 
 	 * Example:
-	 * Date.strftime("%m/%d/%y", new Date());		// "04/13/08"
-	 * Date.strftime("c", "2008-04-13T17:52:03Z");	// "04/13/08"
+	 * DateJS.strftime("%m/%d/%y", new DateJS());		// "04/13/08"
+	 * DateJS.strftime("c", "2008-04-13T17:52:03Z");	// "04/13/08"
 	 * 
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
 	 * @param {Number}   The number representing the number of seconds that have elapsed since January 1, 1970 (local time). 
-	 * @return {String}  A string representation of the current Date object.
+	 * @return {String}  A string representation of the current DateJS object.
 	 */
 	$D.strftime = function (format, time) {
-		return new Date(time * 1000).$format(format);
+		return new DateJS(time * 1000).$format(format);
 	};
 	/**
-	 * Parse any textual datetime description into a Unix timestamp. 
+	 * Parse any textual DateJStime description into a Unix timestamp. 
 	 * A Unix timestamp is the number of seconds that have elapsed since January 1, 1970 (midnight UTC/GMT).
 	 * 
 	 * Example:
-	 * Date.strtotime("04/13/08");				// 1208044800
-	 * Date.strtotime("1970-01-01T00:00:00Z");	// 0
+	 * DateJS.strtotime("04/13/08");				// 1208044800
+	 * DateJS.strtotime("1970-01-01T00:00:00Z");	// 0
 	 * 
 	 * @param {String}   A format string consisting of one or more format spcifiers [Optional].
-	 * @param {Object}   A string or date object.
-	 * @return {String}  A string representation of the current Date object.
+	 * @param {Object}   A string or DateJS object.
+	 * @return {String}  A string representation of the current DateJS object.
 	 */
 	$D.strtotime = function (time) {
 		var d = $D.parse(time);
@@ -269,7 +270,7 @@
 				case "Z":
 					return x.getTimezoneOffset() * -60;
 				case "B":
-					var now = new Date();
+					var now = new DateJS();
 					return Math.floor(((now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (now.getTimezoneOffset() + 60) * 60) / 86.4);
 				case "c":
 					return x.toISOString().replace(/\"/g, "");
@@ -306,3 +307,4 @@
 		$P.format = $P.$format;
 	}
 }());
+}

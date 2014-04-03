@@ -1,5 +1,6 @@
+module.exports = function(DateJS) {
 (function () {
-	var $D = Date,
+	var $D = DateJS,
 		$P = $D.prototype,
 		p = function (s, l) {
 			if (!l) {
@@ -33,7 +34,7 @@
 		 */
 		if (!$D.now) {
 			$D._now = function now() {
-				return new Date().getTime();
+				return new DateJS().getTime();
 			};
 		} else if (!$D._now) {
 			$D._now = $D.now;
@@ -74,10 +75,10 @@
 	 * @return {Date}    this
 	 */
 	$P.clearTime = function () {
-		this.setHours(0);
-		this.setMinutes(0);
-		this.setSeconds(0);
-		this.setMilliseconds(0);
+		this._date.setHours(0);
+		this._date.setMinutes(0);
+		this._date.setSeconds(0);
+		this._date.setMilliseconds(0);
 		return this;
 	};
 
@@ -87,10 +88,10 @@
 	 */
 	$P.setTimeToNow = function () {
 		var n = new Date();
-		this.setHours(n.getHours());
-		this.setMinutes(n.getMinutes());
-		this.setSeconds(n.getSeconds());
-		this.setMilliseconds(n.getMilliseconds());
+		this._date.setHours(n.getHours());
+		this._date.setMinutes(n.getMinutes());
+		this._date.setSeconds(n.getSeconds());
+		this._date.setMilliseconds(n.getMilliseconds());
 		return this;
 	};
 
@@ -99,7 +100,7 @@
 	 * @return {Date}    The current date.
 	 */
 	$D.today = function () {
-		return new Date().clearTime();
+		return new DateJS().clearTime();
 	};
 
 	/** 
@@ -107,7 +108,7 @@
 	 * @return {Date}    The current date.
 	 */
 	$D.present = function () {
-		return new Date();
+		return new DateJS();
 	};
 
 	/**
@@ -142,7 +143,7 @@
 	 * @return {String}  The day name
 	 */
 	$D.getDayName = function (n) {
-		return Date.CultureInfo.dayNames[n];
+		return DateJS.CultureInfo.dayNames[n];
 	};
 
 	/**
@@ -151,7 +152,7 @@
 	 * @return {Number}  The day number
 	 */
 	$D.getDayNumberFromName = function (name) {
-		var n = Date.CultureInfo.dayNames, m = Date.CultureInfo.abbreviatedDayNames, o = Date.CultureInfo.shortestDayNames, s = name.toLowerCase();
+		var n = DateJS.CultureInfo.dayNames, m = DateJS.CultureInfo.abbreviatedDayNames, o = DateJS.CultureInfo.shortestDayNames, s = name.toLowerCase();
 		for (var i = 0; i < n.length; i++) {
 			if (n[i].toLowerCase() === s || m[i].toLowerCase() === s || o[i].toLowerCase() === s) {
 				return i;
@@ -166,7 +167,7 @@
 	 * @return {Number}  The day number
 	 */
 	$D.getMonthNumberFromName = function (name) {
-		var n = Date.CultureInfo.monthNames, m = Date.CultureInfo.abbreviatedMonthNames, s = name.toLowerCase();
+		var n = DateJS.CultureInfo.monthNames, m = DateJS.CultureInfo.abbreviatedMonthNames, s = name.toLowerCase();
 		for (var i = 0; i < n.length; i++) {
 			if (n[i].toLowerCase() === s || m[i].toLowerCase() === s) {
 				return i;
@@ -181,7 +182,7 @@
 	 * @return {String}  The month name
 	 */
 	$D.getMonthName = function (n) {
-		return Date.CultureInfo.monthNames[n];
+		return DateJS.CultureInfo.monthNames[n];
 	};
 
 	/**
@@ -202,13 +203,13 @@
 	$D.getDaysInMonth = function (year, month) {
 		if (!month && $D.validateMonth(year)) {
 				month = year;
-				year = Date.today().getFullYear();
+				year = DateJS.today().getFullYear();
 		}
 		return [31, ($D.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
 	};
  
 	$D.getTimezoneAbbreviation = function (offset, dst) {
-		var p, n = (dst || false) ? Date.CultureInfo.abbreviatedTimeZoneDST : Date.CultureInfo.abbreviatedTimeZoneStandard;
+		var p, n = (dst || false) ? DateJS.CultureInfo.abbreviatedTimeZoneDST : DateJS.CultureInfo.abbreviatedTimeZoneStandard;
 		for (p in n) {
 			if (n.hasOwnProperty(p)) {
 				if (n[p] === offset) {
@@ -220,8 +221,8 @@
 	};
 	
 	$D.getTimezoneOffset = function (name, dst) {
-		var i, a =[], z = Date.CultureInfo.timezones;
-		if (!name) { name = (new Date()).getTimezone();}
+		var i, a =[], z = DateJS.CultureInfo.timezones;
+		if (!name) { name = (new DateJS()).getTimezone();}
 		for (i = 0; i < z.length; i++) {
 			if (z[i].name === name.toUpperCase()) {
 				a.push(i);
@@ -242,14 +243,14 @@
 	};
 
 	$D.getQuarter = function (d) {
-		d = d || new Date(); // If no date supplied, use today
+		d = d || new DateJS(); // If no date supplied, use today
 		var q = [1,2,3,4];
 		return q[Math.floor(d.getMonth() / 3)]; // ~~~ is a bitwise op. Faster than Math.floor
 	};
 
 	$D.getDaysLeftInQuarter = function (d) {
-		d = d || new Date();
-		var qEnd = new Date(d);
+		d = d || new DateJS();
+		var qEnd = new DateJS(d);
 		qEnd.setMonth(qEnd.getMonth() + 3 - qEnd.getMonth() % 3, 0);
 		return Math.floor((qEnd - d) / 8.64e7);
 	};
@@ -259,7 +260,7 @@
 	 * @return {Date}    A new Date instance
 	 */
 	$P.clone = function () {
-		return new Date(this.getTime());
+		return new DateJS(this.getTime());
 	};
 
 	/**
@@ -268,7 +269,7 @@
 	 * @return {Number}  -1 = this is lessthan date. 0 = values are equal. 1 = this is greaterthan date.
 	 */
 	$P.compareTo = function (date) {
-		return Date.compare(this, date);
+		return DateJS.compare(this, date);
 	};
 
 	/**
@@ -277,7 +278,7 @@
 	 * @return {Boolean} true if dates are equal. false if they are not equal.
 	 */
 	$P.equals = function (date) {
-		return Date.equals(this, (date !== undefined ? date : new Date()));
+		return DateJS.equals(this, (date !== undefined ? date : new DateJS()));
 	};
 
 	/**
@@ -296,7 +297,7 @@
 	 * @return {Boolean} true if this date instance is greater than the date to compare to (or "now"), otherwise false.
 	 */
 	$P.isAfter = function (date) {
-		return this.compareTo(date || new Date()) === 1;
+		return this.compareTo(date || new DateJS()) === 1;
 	};
 
 	/**
@@ -305,7 +306,7 @@
 	 * @return {Boolean} true if this date instance is less than the date to compare to (or "now").
 	 */
 	$P.isBefore = function (date) {
-		return (this.compareTo(date || new Date()) === -1);
+		return (this.compareTo(date || new DateJS()) === -1);
 	};
 
 	/**
@@ -320,7 +321,7 @@
 	 * @return {Boolean} true if this Date instance occurs on the same Day as the supplied 'date'.
 	 */
 	$P.isToday = $P.isSameDay = function (date) {
-		return this.clone().clearTime().equals((date || new Date()).clone().clearTime());
+		return this.clone().clearTime().equals((date || new DateJS()).clone().clearTime());
 	};
 	
 	/**
@@ -510,7 +511,7 @@
 	 */
 	$P.getWeek = function (utc) {
 		// Create a copy of this date object  
-		var self, target = new Date(this.valueOf());
+		var self, target = new DateJS(this.valueOf());
 		if (utc) {
 			target.addMinutes(target.getTimezoneOffset());
 			self = target.clone();
@@ -570,11 +571,11 @@
 	};
 
 	$P.getQuarter = function () {
-		return Date.getQuarter(this);
+		return DateJS.getQuarter(this);
 	};
 
 	$P.getDaysLeftInQuarter = function () {
-		return Date.getDaysLeftInQuarter(this);
+		return DateJS.getDaysLeftInQuarter(this);
 	};
 
 	// private
@@ -710,7 +711,7 @@
 	 * Set the value of year, month, day, hour, minute, second, millisecond of date instance using given configuration object.
 	 * Example
 	<pre><code>
-	Date.today().set( { day: 20, month: 1 } )
+	DateJS.today().set( { day: 20, month: 1 } )
 
 	new Date().set( { millisecond: 0 } )
 	</code></pre>
@@ -862,7 +863,7 @@
 	 * @return {Boolean} true|false
 	 */
 	$P.hasDaylightSavingTime = function () {
-		return (Date.today().set({month: 0, day: 1}).getTimezoneOffset() !== Date.today().set({month: 6, day: 1}).getTimezoneOffset());
+		return (DateJS.today().set({month: 0, day: 1}).getTimezoneOffset() !== DateJS.today().set({month: 6, day: 1}).getTimezoneOffset());
 	};
 	
 	/**
@@ -870,7 +871,7 @@
 	 * @return {Boolean} true|false
 	 */
 	$P.isDaylightSavingTime = function () {
-		return Date.today().set({month: 0, day: 1}).getTimezoneOffset() !== this.getTimezoneOffset();
+		return DateJS.today().set({month: 0, day: 1}).getTimezoneOffset() !== this.getTimezoneOffset();
 	};
 
 	/**
@@ -975,7 +976,7 @@
 		// Standard Date and Time Format Strings. Formats pulled from CultureInfo file and
 		// may vary by culture. 
 		if (!ignoreStandards && format && format.length === 1) {
-			var y, c = Date.CultureInfo.formatPatterns;
+			var y, c = DateJS.CultureInfo.formatPatterns;
 			x.t = x.toString;
 			switch (format) {
 			case "d":
@@ -1032,25 +1033,25 @@
 			case "yy":
 				return p(x.getFullYear());
 			case "dddd":
-				return Date.CultureInfo.dayNames[x.getDay()];
+				return DateJS.CultureInfo.dayNames[x.getDay()];
 			case "ddd":
-				return Date.CultureInfo.abbreviatedDayNames[x.getDay()];
+				return DateJS.CultureInfo.abbreviatedDayNames[x.getDay()];
 			case "dd":
 				return p(x.getDate());
 			case "d":
 				return x.getDate();
 			case "MMMM":
-				return Date.CultureInfo.monthNames[x.getMonth()];
+				return DateJS.CultureInfo.monthNames[x.getMonth()];
 			case "MMM":
-				return Date.CultureInfo.abbreviatedMonthNames[x.getMonth()];
+				return DateJS.CultureInfo.abbreviatedMonthNames[x.getMonth()];
 			case "MM":
 				return p((x.getMonth() + 1));
 			case "M":
 				return x.getMonth() + 1;
 			case "t":
-				return x.h() < 12 ? Date.CultureInfo.amDesignator.substring(0, 1) : Date.CultureInfo.pmDesignator.substring(0, 1);
+				return x.h() < 12 ? DateJS.CultureInfo.amDesignator.substring(0, 1) : DateJS.CultureInfo.pmDesignator.substring(0, 1);
 			case "tt":
-				return x.h() < 12 ? Date.CultureInfo.amDesignator : Date.CultureInfo.pmDesignator;
+				return x.h() < 12 ? DateJS.CultureInfo.amDesignator : DateJS.CultureInfo.pmDesignator;
 			case "S":
 				return ord(x.getDate());
 			case "W":
@@ -1068,3 +1069,4 @@
 	};
 
 }());
+}

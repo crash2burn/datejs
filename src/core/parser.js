@@ -1,5 +1,7 @@
+module.exports = function(DateJS) {
+	
 (function () {
-	var $P = Date.Parsing;
+	var $P = DateJS.Parsing;
 	var _ = $P.Operators = {
 		//
 		// Tokenizers
@@ -443,7 +445,7 @@
 }());
 
 (function () {
-	var $D = Date;
+	var $D = DateJS;
 
 	var flattenAndCompact = function (ax) {
 		var rx = [];
@@ -461,9 +463,9 @@
 
 	var parseMeridian = function () {
 		if (this.meridian && (this.hour || this.hour === 0)) {
-			if (this.meridian === "a" && this.hour > 11 && Date.Config.strict24hr){
+			if (this.meridian === "a" && this.hour > 11 && DateJS.Config.strict24hr){
 				throw "Invalid hour and meridian combination";
-			} else if (this.meridian === "p" && this.hour < 12 && Date.Config.strict24hr){
+			} else if (this.meridian === "p" && this.hour < 12 && DateJS.Config.strict24hr){
 				throw "Invalid hour and meridian combination";
 			} else if (this.meridian === "p" && this.hour < 12) {
 				this.hour = this.hour + 12;
@@ -535,7 +537,7 @@
 			return function () {
 				var n = Number(s);
 				this.year = ((s.length > 2) ? n :
-					(n + (((n + 2000) < Date.CultureInfo.twoDigitYearMax) ? 2000 : 1900)));
+					(n + (((n + 2000) < DateJS.CultureInfo.twoDigitYearMax) ? 2000 : 1900)));
 			};
 		},
 		rday: function (s) {
@@ -566,7 +568,7 @@
 				}
 			}
 			
-			var now = new Date();
+			var now = new DateJS();
 			if ((this.hour || this.minute) && (!this.month && !this.year && !this.day)) {
 				this.day = now.getDate();
 			}
@@ -604,7 +606,7 @@
 				throw new RangeError(this.day + " is not a valid value for days.");
 			}
 
-			var r = new Date(this.year, this.month, this.day, this.hour, this.minute, this.second, this.millisecond);
+			var r = new DateJS(this.year, this.month, this.day, this.hour, this.minute, this.second, this.millisecond);
 			if (this.year < 100) {
 				r.setFullYear(this.year); // means years less that 100 are process correctly. JS will parse it otherwise as 1900-1999.
 			}
@@ -633,9 +635,9 @@
 			var today = $D.today();
 
 			if (this.now && !this.unit && !this.operator) {
-				return new Date();
+				return new DateJS();
 			} else if (this.now) {
-				today = new Date();
+				today = new DateJS();
 			}
 			
 			var expression = !!(this.days && this.days !== null || this.orient || this.operator);
@@ -664,7 +666,7 @@
 			}
 
 			if (!expression && this.weekday && !this.day && !this.days) {
-				temp = Date[this.weekday]();
+				temp = DateJS[this.weekday]();
 				this.day = temp.getDate();
 				if (!this.month) {
 					this.month = temp.getMonth();
@@ -726,7 +728,7 @@
 			parseMeridian.call(this);
 
 			if (this.weekday && this.unit !== "week" && !this.day && !this.days) {
-				temp = Date[this.weekday]();
+				temp = DateJS[this.weekday]();
 				this.day = temp.getDate();
 				if (temp.getMonth() !== today.getMonth()) {
 					this.month = temp.getMonth();
@@ -738,12 +740,12 @@
 			}
 
 			if (!this.orient && !this.operator && this.unit === "week" && this.value && !this.day && !this.month) {
-				return Date.today().setWeek(this.value);
+				return DateJS.today().setWeek(this.value);
 			}
 
 			if (this.unit === "week" && this.weeks && !this.day && !this.month) {
 				var weekday = (this.weekday) ? this.weekday : "today";
-				var d = Date[weekday]().addWeeks(this.weeks);
+				var d = DateJS[weekday]().addWeeks(this.weeks);
 				if (this.now) {
 					d.setTimeToNow();
 				}
@@ -769,7 +771,7 @@
 	g.ctoken = function (keys) {
 		var fn = _C[keys];
 		if (! fn) {
-			var c = Date.CultureInfo.regexPatterns;
+			var c = DateJS.CultureInfo.regexPatterns;
 			var kx = keys.split(/\s+/), px = [];
 			for (var i = 0; i < kx.length ; i++) {
 				px.push(_.replace(_.rtoken(c[kx[i]]), kx[i]));
@@ -779,7 +781,7 @@
 		return fn;
 	};
 	g.ctoken2 = function (key) {
-		return _.rtoken(Date.CultureInfo.regexPatterns[key]);
+		return _.rtoken(DateJS.CultureInfo.regexPatterns[key]);
 	};
 	var cacheProcessRtoken = function (token, type, eachToken) {
 		if (eachToken) {
@@ -823,7 +825,7 @@
 	g.M = cacheProcessRtoken(/^(1[0-2]|0\d|\d)/, t.month);
 	g.MM = cacheProcessRtoken(/^(1[0-2]|0\d)/, t.month);
 	g.MMM = g.MMMM = _.cache(_.process(g.ctoken("jan feb mar apr may jun jul aug sep oct nov dec"), t.month));
-//	g.MMM = g.MMMM = _.cache(_.process(g.ctoken(Date.CultureInfo.abbreviatedMonthNames.join(" ")), t.month));
+//	g.MMM = g.MMMM = _.cache(_.process(g.ctoken(DateJS.CultureInfo.abbreviatedMonthNames.join(" ")), t.month));
 	g.y = cacheProcessRtoken(/^(\d\d?)/, t.year);
 	g.yy = cacheProcessRtoken(/^(\d\d)/, t.year);
 	g.yyy = cacheProcessRtoken(/^(\d\d?\d?\d?)/, t.year);
@@ -878,7 +880,7 @@
 	g.ymd = _fn(g.ddd, g.year, g.month, g.day);
 	g.dmy = _fn(g.ddd, g.day, g.month, g.year);
 	g.date = function (s) {
-		return ((g[Date.CultureInfo.dateElementOrder] || g.mdy).call(this, s));
+		return ((g[DateJS.CultureInfo.dateElementOrder] || g.mdy).call(this, s));
 	};
 
 	// parsing date format specifiers - ex: "h:m:s tt" 
@@ -1097,14 +1099,14 @@
 		if (!s) {
 			return null;
 		}
-		if (s instanceof Date) {
+		if (s instanceof DateJS) {
 			return s.clone();
 		}
 		if (s.length >= 4 && s.charAt(0) !== "0" && s.charAt(0) !== "+"&& s.charAt(0) !== "-") { // ie: 2004 will pass, 0800 won't.
 			//  Start with specific formats
 			d = $D.Parsing.ISO.parse(s) || $D.Parsing.Numeric.parse(s);
 		}
-		if (d instanceof Date && !isNaN(d.getTime())) {
+		if (d instanceof DateJS && !isNaN(d.getTime())) {
 			return d;
 		} else {
 			// find ordinal dates (1st, 3rd, 8th, etc and remove them as they cause parsing issues)
@@ -1123,8 +1125,8 @@
 			} else {
 				try {
 					// ok we haven't parsed it, last ditch attempt with the built-in parser.
-					t = Date._parse(s);
-					return (t || t === 0) ? new Date(t) : null;
+					t = DateJS._parse(s);
+					return (t || t === 0) ? new DateJS(t) : null;
 				} catch (e) {
 					return null;
 				}
@@ -1137,8 +1139,8 @@
 	}
 	$D.parse = parse;
 
-	Date.getParseFunction = function (fx) {
-		var fns = Date.Grammar.allformats(fx);
+	DateJS.getParseFunction = function (fx) {
+		var fns = DateJS.Grammar.allformats(fx);
 		return function (s) {
 			var r = null;
 			for (var i = 0; i < fns.length; i++) {
@@ -1182,3 +1184,4 @@
 		return $D.getParseFunction(fx)(s);
 	};
 }());
+}
