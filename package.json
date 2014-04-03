@@ -13,11 +13,11 @@
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "git://github.com/abritinthebay/datejs.git"
+    "url": "git://github.com/crash2burn/datejs.git"
   },
-  "homepage": "https://github.com/abritinthebay/datejs",
+  "homepage": "https://github.com/crash2burn/datejs",
   "bugs": {
-    "url": "http://github.com/abritinthebay/datejs/issues"
+    "url": "http://github.com/crash2burn/datejs/issues"
   },
   "keywords": [
     "date",
@@ -32,17 +32,15 @@
     "test": "grunt test"
   },
   "author": {
-    "name": "Gregory Wild-Smith",
-    "email": "gregory@wild-smith.com"
+    "name": "crash2burn",
+    "email": ""
   },
   "maintainers" : [ 
-    {
-      "name": "Gregory Wild-Smith",
-      "email": "gregory@wild-smith.com"
-    }
+    
   ],
   "main" : "./index.js",
-  "originator": "Geoffrey McGill",
+  "originators": ["Geoffrey McGill","Gregory Wild-Smith"],
+
   "license": "MIT",
   "readmeFilename": "README.md"
 }
