@@ -3,7 +3,7 @@
  *************************************************************/
  module.exports = function(DateJS) {
 (function () {
-	var $D = DateJS, $P = $D.prototype, $N = Number.prototype;
+	var $D = DateJS, $P = $D.prototype, $N = DateJS;
 
 	// private
 	$P._orient = +1;
@@ -21,7 +21,7 @@
 	$P._isSecond = false;
 
 	// private
-	$N._dateElement = "days";
+	$P._dateElement = "days";
 
 	/** 
 	 * Moves the date to the next instance of a date as specified by the subsequent date element function (eg. .day(), .month()), month name function (eg. .january(), .jan()) or day name function (eg. .friday(), fri()).
@@ -240,9 +240,9 @@
 	 *  
 	 * @return {Date}    A new Date instance
 	 */
-	$N.fromNow = $N.after = function (date) {
+	$P.fromNow = $P.after = function (date) {
 		var c = {};
-		c[this._dateElement] = this;
+		c[this._dateElement] = this._dateAmount;
 		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
@@ -261,10 +261,11 @@
 	 *  
 	 * @return {Date}    A new Date instance
 	 */
-	$N.ago = $N.before = function (date) {
+	$P.ago = $P.before = function (date) {
 		var c = {},
 		s = (this._dateElement[this._dateElement.length-1] !== "s") ? this._dateElement + "s" : this._dateElement;
-		c[s] = this * -1;
+		c[s] = this._dateAmount * -1;
+		console.log("DAYS", c)
 		return ((!date) ? new DateJS() : date.clone()).add(c);
 	};
 
@@ -449,9 +450,11 @@
 	
 	
 	var nf = function (n) {
-		return function () {
-			this._dateElement = n;
-			return this;
+		return function (i) {
+			var o = new DateJS();
+			o._dateElement = n;
+			o._dateAmount = i
+			return o;
 		};
 	};
    
